@@ -28,7 +28,7 @@ def _chain_joint_names(chain):
     names = []
     for i in range(chain.getNrOfSegments()):
         jt = chain.getSegment(i).getJoint()
-        if jt.getType() == kdl.Joint.Fixed:
+        if jt.getTypeName() in ("None", "Fixed"):
             continue
         names.append(jt.getName())
     return names
