@@ -1,0 +1,40 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="robot_ip" default="192.168.1.10"/>
+  <arg name="geomagic_driver" default="true"/>
+  <arg name="rviz" default="true"/>
+  <arg name="vision" default="false"/>
+  <!-- robot_wrench: match legacy force_feedback_kinova.py; kdl_gravity: inverse-dynamics demo -->
+  <arg name="haptic_source" default="robot_wrench"/>
+
+  <include file="$(find kortex_driver)/launch/kortex_driver.launch">
+    <arg name="start_rviz" value="false"/>
+    <arg name="start_moveit" value="false"/>
+    <arg name="ip_address" value="$(arg robot_ip)"/>
+    <arg name="vision" value="$(arg vision)"/>
+  </include>
+
+  <group ns="geomagic">
+    <param name="robot_description" textfile="$(find geomagic_description)/urdf/geomagic_minimal.urdf"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="rsp_geomagic"/>
+  </group>
+
+  <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_geomagic_base"
+        args="0.5 0 0.25 0 0 0 base_link base"/>
+
+  <node if="$(arg geomagic_driver)" pkg="geomagic_control" type="omni_cartesian" name="geomagic_node" output="screen">
+    <param name="torque_mode" value="false"/>
+    <param name="force_topic" value="/arm/force_feedback"/>
+    <param name="omni_name" value="/geomagic"/>
+  </node>
+
+  <node pkg="kinova_geomagic_demo" type="kdl_haptic_feedback.py" name="kdl_haptic_feedback" output="screen">
+    <param name="robot_description_param" value="/my_gen3/robot_description"/>
+    <param name="source" value="$(arg haptic_source)"/>
+  </node>
+
+  <node pkg="kinova_geomagic_demo" type="geomagic_kinova_cartesian_teleop.py" name="geomagic_kinova_teleop" output="screen"/>
+
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz"
+        args="-d $(find kinova_geomagic_demo)/rviz/demo.rviz" output="screen"/>
+</launch>

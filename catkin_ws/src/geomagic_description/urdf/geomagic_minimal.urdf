@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<robot name="geomagic_touch">
+  <link name="base">
+    <visual>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry><box size="0.08 0.08 0.04"/></geometry>
+    </visual>
+    <collision>
+      <origin xyz="0 0 0.02" rpy="0 0 0"/>
+      <geometry><box size="0.08 0.08 0.04"/></geometry>
+    </collision>
+  </link>
+  <link name="torso">
+    <visual><geometry><cylinder radius="0.03" length="0.07"/></geometry></visual>
+  </link>
+  <link name="upper_arm">
+    <visual><geometry><box size="0.14 0.04 0.04"/></geometry></visual>
+  </link>
+  <link name="lower_arm">
+    <visual><geometry><box size="0.12 0.035 0.035"/></geometry></visual>
+  </link>
+  <link name="wrist">
+    <visual><geometry><cylinder radius="0.025" length="0.08"/></geometry></visual>
+  </link>
+  <link name="tip">
+    <visual><geometry><box size="0.04 0.03 0.06"/></geometry></visual>
+  </link>
+  <link name="stylus">
+    <visual><geometry><cylinder radius="0.012" length="0.08"/></geometry></visual>
+  </link>
+  <link name="joystick">
+    <visual><geometry><sphere radius="0.015"/></geometry></visual>
+  </link>
+
+  <joint name="waist" type="revolute">
+    <parent link="base"/>
+    <child link="torso"/>
+    <origin xyz="0 0 0.09" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.98" upper="0.98" velocity="100" effort="5"/>
+  </joint>
+  <joint name="shoulder" type="revolute">
+    <parent link="torso"/>
+    <child link="upper_arm"/>
+    <origin xyz="-0.0075 0 0.035" rpy="1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="0" upper="1.75" velocity="100" effort="5"/>
+  </joint>
+  <joint name="elbow" type="revolute">
+    <parent link="upper_arm"/>
+    <child link="lower_arm"/>
+    <origin xyz="0.14 0 0.0075" rpy="0 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-0.81" upper="1.25" velocity="100" effort="5"/>
+  </joint>
+  <joint name="yaw" type="revolute">
+    <parent link="lower_arm"/>
+    <child link="wrist"/>
+    <origin xyz="0 0 0" rpy="1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.618" upper="2.182" velocity="100" effort="5"/>
+  </joint>
+  <joint name="pitch" type="revolute">
+    <parent link="wrist"/>
+    <child link="tip"/>
+    <origin xyz="0 0 0.1325" rpy="-1.5707 0 0"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-1.13" upper="1.13" velocity="100" effort="5"/>
+  </joint>
+  <joint name="roll" type="revolute">
+    <parent link="tip"/>
+    <child link="stylus"/>
+    <origin xyz="0 0 0" rpy="-1.5707 0 1.5707"/>
+    <axis xyz="0 0 1"/>
+    <limit lower="-2.58" upper="2.58" velocity="100" effort="5"/>
+  </joint>
+  <joint name="joy" type="fixed">
+    <parent link="stylus"/>
+    <child link="joystick"/>
+    <origin xyz="0 0 -0.07" rpy="0 0 0"/>
+  </joint>
+</robot>

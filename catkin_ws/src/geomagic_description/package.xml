@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<package format="2">
+  <name>geomagic_description</name>
+  <version>1.0.0</version>
+  <description>Minimal Geomagic Touch URDF (primitive geometry, no vendor meshes).</description>
+  <maintainer email="demo@example.com">Demo Maintainer</maintainer>
+  <license>BSD</license>
+  <buildtool_depend>catkin</buildtool_depend>
+</package>

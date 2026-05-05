@@ -1,0 +1,6 @@
+.catkin_workspace
+catkin_ws/build/
+catkin_ws/devel/
+catkin_ws/logs/
+**/__pycache__/
+*.pyc

@@ -1,0 +1,21 @@
+# Kinova Gen3 + Geomagic Touch (ROS Noetic) demo stack
+services:
+  demo:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kinova-geomagic-noetic:demo
+    container_name: kinova_geomagic_noetic
+    network_mode: host
+    privileged: true
+    environment:
+      DISPLAY: ${DISPLAY}
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    stdin_open: true
+    tty: true
+    # Default: RViz + dual robot_description (Kinova sim + Geomagic model).
+    # Override for real hardware, for example:
+    # command: >
+    #   roslaunch kinova_geomagic_demo demo_hardware.launch robot_ip:=192.168.1.10
+    command: roslaunch kinova_geomagic_demo demo_rviz.launch

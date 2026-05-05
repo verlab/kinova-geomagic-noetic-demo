@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<launch>
+  <arg name="rviz" default="true"/>
+  <arg name="vision" default="false"/>
+
+  <!-- Kinova Gen3 description for visualization (Gazebo-style world link when sim:=true) -->
+  <param name="robot_description"
+         command="$(find xacro)/xacro $(find kortex_description)/robots/gen3.xacro dof:=7 vision:=$(arg vision) sim:=true"/>
+
+  <node pkg="robot_state_publisher" type="robot_state_publisher" name="rsp_kinova"/>
+  <node pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" name="jsp_kinova"/>
+
+  <group ns="geomagic">
+    <param name="robot_description" textfile="$(find geomagic_description)/urdf/geomagic_minimal.urdf"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="rsp_geomagic"/>
+    <node pkg="joint_state_publisher_gui" type="joint_state_publisher_gui" name="jsp_geomagic"/>
+  </group>
+
+  <!-- Offset the haptic device model beside the arm in RViz -->
+  <node pkg="tf2_ros" type="static_transform_publisher" name="world_to_geomagic_base"
+        args="0.55 0 0.15 0 0 0 world base"/>
+
+  <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz"
+        args="-d $(find kinova_geomagic_demo)/rviz/demo.rviz" output="screen"/>
+</launch>

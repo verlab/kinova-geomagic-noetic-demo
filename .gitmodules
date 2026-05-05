@@ -1,0 +1,4 @@
+[submodule "catkin_ws/src/ros_kortex"]
+	path = catkin_ws/src/ros_kortex
+	url = https://github.com/Kinovarobotics/ros_kortex.git
+	branch = noetic-devel
