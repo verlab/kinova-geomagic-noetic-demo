@@ -2,7 +2,7 @@
 <package format="2">
   <name>geomagic_description</name>
   <version>1.0.0</version>
-  <description>Minimal Geomagic Touch URDF (primitive geometry, no vendor meshes).</description>
+  <description>Geomagic Touch URDF and STL meshes (from phantom_omni/geomagic_description).</description>
   <maintainer email="demo@example.com">Demo Maintainer</maintainer>
   <license>BSD</license>
   <buildtool_depend>catkin</buildtool_depend>

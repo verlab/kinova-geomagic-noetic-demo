@@ -8,7 +8,7 @@ Tutorial-style workspace for **bilateral-style teleoperation**: drive a **Kinova
 |-----------|--------|
 | **Kinova driver / URDF / MoveIt configs** | Git submodule [Kinovarobotics/ros_kortex](https://github.com/Kinovarobotics/ros_kortex) at tag **`v2.5.2`** (`noetic-devel` line; latest public release as of this repo’s creation). |
 | **Geomagic driver (`omni_cartesian`) + messages** | Trimmed from `phantom_omni/geomagic_control` (Georgia Tech lineage); **optional OpenHaptics** build. |
-| **Geomagic URDF** | Minimal primitives (`geomagic_minimal.urdf`), replacing missing STL meshes from the legacy package. |
+| **Geomagic URDF** | `geomagic.urdf` + `meshes/*.stl` from `phantom_omni/geomagic_description` (visuals). Optional `geomagic_minimal.urdf` (primitives only) kept for quick tests. |
 | **Demo nodes (`kinova_geomagic_demo`)** | New: Cartesian velocity IBVS-style teleop + haptic bridge node. |
 
 The snapshot under `2017-itv-teleoperacao-third-party/ros_kortex` is **not** maintained as closely as upstream; this repo tracks **upstream `v2.5.2`** explicitly.

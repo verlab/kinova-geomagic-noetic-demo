@@ -15,7 +15,7 @@
   </include>
 
   <group ns="geomagic">
-    <param name="robot_description" textfile="$(find geomagic_description)/urdf/geomagic_minimal.urdf"/>
+    <param name="robot_description" textfile="$(find geomagic_description)/urdf/geomagic.urdf"/>
     <node pkg="robot_state_publisher" type="robot_state_publisher" name="rsp_geomagic"/>
   </group>
 
