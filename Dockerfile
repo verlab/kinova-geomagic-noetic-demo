@@ -2,13 +2,23 @@ FROM ros:noetic-ros-base
 ENV DEBIAN_FRONTEND=noninteractive
 ENV ROS_DISTRO=noetic
 ENV ROS_PYTHON_VERSION=3
+# OpenHaptics / phantom_omni readme: numeric locale must be US English or joint reads become zero.
+ENV LANG=en_US.UTF-8
+ENV LC_ALL=en_US.UTF-8
+ENV LC_NUMERIC=en_US.UTF-8
+ENV OPENHAPTICS_ROOT=/usr
 
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
+  locales \
   python3-pip python3-rosdep python3-rosinstall python3-vcstools \
   build-essential cmake git curl pkg-config \
   libgoogle-glog-dev libprotobuf-dev protobuf-compiler \
   libssl-dev \
+  libbullet-dev \
+  libncurses5-dev \
+  libncurses5 \
+  libtinfo5 \
   ros-noetic-rviz \
   ros-noetic-robot-state-publisher \
   ros-noetic-joint-state-publisher \
@@ -23,7 +33,8 @@ RUN apt-get update \
   python3-numpy \
   python3-pykdl \
   libeigen3-dev \
-  && rm -rf /var/lib/apt/lists/*
+  && rm -rf /var/lib/apt/lists/* \
+  && locale-gen en_US.UTF-8
 
 # Conan 1.x (required by ros_kortex)
 RUN pip3 install --no-cache-dir "conan>=1.52,<2" \
@@ -31,19 +42,30 @@ RUN pip3 install --no-cache-dir "conan>=1.52,<2" \
   && (conan profile new default --detect 2>/dev/null || true) \
   && conan profile update settings.compiler.libcxx=libstdc++11 default
 
+COPY docker/vendor/openhaptics_3.4-0-developer-edition-amd64.tar.gz \
+     docker/vendor/geomagic_touch_device_driver_2016.1-1-amd64.tar.gz \
+     /tmp/geomagic-vendor/
+
+COPY docker/install_vendor_geomagic.sh /tmp/install_vendor_geomagic.sh
+RUN chmod +x /tmp/install_vendor_geomagic.sh \
+  && /tmp/install_vendor_geomagic.sh /tmp/geomagic-vendor \
+  && rm -rf /tmp/geomagic-vendor /tmp/install_vendor_geomagic.sh
+
+COPY docker/geomagic-touch-setup.sh /usr/local/bin/geomagic-touch-setup
+RUN chmod +x /usr/local/bin/geomagic-touch-setup
+
+COPY docker/udev/70-geomagic-touch.rules /etc/udev/rules.d/70-geomagic-touch.rules
+
 WORKDIR /catkin_ws
 COPY catkin_ws/src /catkin_ws/src
-
-# Optional: place OpenHaptics under ./openhaptics in the build context and set -DOPENHAPTICS_ROOT
-ARG OPENHAPTICS_ROOT=
-ENV OPENHAPTICS_ROOT=${OPENHAPTICS_ROOT}
 
 RUN rosdep init 2>/dev/null || true \
   && rosdep update --include-eol-distros \
   && apt-get update \
   && rosdep install --from-paths /catkin_ws/src --ignore-src -y \
       --skip-keys="openhaptics-ae moveit_fake_controller_manager" \
-      --rosdistro=${ROS_DISTRO}
+      --rosdistro=${ROS_DISTRO} \
+  && rm -rf /var/lib/apt/lists/*
 
 RUN /bin/bash -c "source /opt/ros/noetic/setup.bash \
   && cd /catkin_ws \

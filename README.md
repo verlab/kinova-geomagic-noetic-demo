@@ -7,7 +7,7 @@ Tutorial-style workspace for **bilateral-style teleoperation**: drive a **Kinova
 | Component | Source |
 |-----------|--------|
 | **Kinova driver / URDF / MoveIt configs** | Git submodule [Kinovarobotics/ros_kortex](https://github.com/Kinovarobotics/ros_kortex) at tag **`v2.5.2`** (`noetic-devel` line; latest public release as of this repo’s creation). |
-| **Geomagic driver (`omni_cartesian`) + messages** | Trimmed from `phantom_omni/geomagic_control` (Georgia Tech lineage); **optional OpenHaptics** build. |
+| **Geomagic driver (`omni_cartesian`) + messages** | From `phantom_omni/geomagic_control`; the Docker image installs **OpenHaptics 3.4** + **Geomagic Touch device driver 2016.1** from `docker/vendor/*.tar.gz` and links against **Bullet LinearMath**. |
 | **Geomagic URDF** | `geomagic.urdf` + `meshes/*.stl` from `phantom_omni/geomagic_description` (visuals). Optional `geomagic_minimal.urdf` (primitives only) kept for quick tests. |
 | **Demo nodes (`kinova_geomagic_demo`)** | New: Cartesian velocity IBVS-style teleop + haptic bridge node. |
 
@@ -18,13 +18,14 @@ The snapshot under `2017-itv-teleoperacao-third-party/ros_kortex` is **not** mai
 - **Docker** and **Docker Compose** v2.
 - For GUI: X11/Wayland setup (`xhost +local:root` or your usual X11 forwarding pattern).
 - **Real robot**: Gen3 reachable on the LAN (default `192.168.1.10` in launch files).
-- **Real Geomagic Touch**: [OpenHaptics / 3D Systems SDK](https://www.3dsystems.com/support/material-downloads) installed when building `geomagic_control` (see below).
+- **Real Geomagic Touch**: reachable via **USB** or **LAN** (Touch X / Ethernet). Vendor archives are installed during the Docker build (see `docker/vendor/`).
 
 ## Troubleshooting
 
 - **rosdep skips Noetic** — Noetic may be marked end-of-life in the rosdistro index; use `rosdep update --include-eol-distros` (as in the Dockerfile).
 - **`moveit_fake_controller_manager`** — Some mirrors omit this deb; the Docker build skips it via `--skip-keys moveit_fake_controller_manager`. Full MoveIt simulations may need extra packages installed manually.
-- **OpenHaptics** — Without the SDK, `geomagic_control` still builds but **does not** produce the `omni_cartesian` binary; use `geomagic_driver:=false` and supply joint states another way, or mount vendor libraries at build time.
+- **OpenHaptics numeric locale** — If joint readings are zero, force US numeric locale (already in Dockerfile / Compose): `LC_ALL=en_US.UTF-8`, `LC_NUMERIC=en_US.UTF-8` (see `phantom_omni/readme.md`).
+- **Vendor archives** — Files in `docker/vendor/*.tar.gz` are proprietary; respect 3D Systems / redistribution terms before publishing images.
 
 ## Clone
 
@@ -51,12 +52,29 @@ docker compose up
 
 Default command: `roslaunch kinova_geomagic_demo demo_rviz.launch` — dual **RobotModel** (Kinova with `sim:=true` + Geomagic model) and two **joint_state_publisher_gui** sliders.
 
+### Geomagic vendor stack (Docker)
+
+Archives under `docker/vendor/` (from `phantom_omni/`):
+
+- `openhaptics_3.4-0-developer-edition-amd64.tar.gz` → headers `HD`/`HDU` and libs under `/usr/lib` (`libHD`, `libHL`, static `libHDU`, …).
+- `geomagic_touch_device_driver_2016.1-1-amd64.tar.gz` → `libPhantomIOLib42.so` and `/opt/geomagic_touch_device_driver/` (**`Geomagic_Touch_Setup`** GUI for USB/LAN).
+
+**Pair / configure the device (recommended for Ethernet/IP Touch):**
+
+```bash
+xhost +local:root
+docker compose build
+docker compose --profile touch-setup run --rm geomagic-touch-setup
+```
+
+Wrapper sets `LD_LIBRARY_PATH` and `QT_PLUGIN_PATH` for the bundled Qt plugins.
+
+**USB:** install `docker/udev/70-geomagic-touch.rules` on the **host** if `hidraw` permissions fail; edit VID/PID from `lsusb` if needed.
+
 ### Hardware stack (Kinova + Geomagic)
 
-1. **Build the image with OpenHaptics** (install SDK on the host, then copy headers/libs into the build context, e.g. `./openhaptics/include` and `./openhaptics/lib`), and extend the Dockerfile `COPY` + `ENV OPENHAPTICS_ROOT=/openhaptics`, **or** bind-mount the SDK at build time. Without OpenHaptics, `omni_cartesian` is skipped but the rest still builds.
-
-2. **USB / udev**: ensure the Touch is accessible (often `/dev/hidraw*`). The compose file uses `privileged: true` for convenience; tighten this to specific `devices`/`group_add` in production.
-
+1. **Build** — `docker compose build` (both `.tar.gz` files must be present in `docker/vendor/`).
+2. **Networking** — `network_mode: host` helps ROS and the LAN Touch driver reach the robot/device.
 3. **Run**:
 
 ```bash

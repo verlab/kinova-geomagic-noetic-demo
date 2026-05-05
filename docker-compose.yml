@@ -10,6 +10,9 @@ services:
     privileged: true
     environment:
       DISPLAY: ${DISPLAY}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      LC_NUMERIC: en_US.UTF-8
     volumes:
       - /tmp/.X11-unix:/tmp/.X11-unix
     stdin_open: true
@@ -19,3 +22,22 @@ services:
     # command: >
     #   roslaunch kinova_geomagic_demo demo_hardware.launch robot_ip:=192.168.1.10
     command: roslaunch kinova_geomagic_demo demo_rviz.launch
+
+  # Pair/configure Geomagic Touch over USB or LAN (vendor GUI). Requires X11 + host networking.
+  # Usage: docker compose --profile touch-setup run --rm geomagic-touch-setup
+  geomagic-touch-setup:
+    image: kinova-geomagic-noetic:demo
+    network_mode: host
+    privileged: true
+    environment:
+      DISPLAY: ${DISPLAY}
+      LANG: en_US.UTF-8
+      LC_ALL: en_US.UTF-8
+      LC_NUMERIC: en_US.UTF-8
+    volumes:
+      - /tmp/.X11-unix:/tmp/.X11-unix
+    stdin_open: true
+    tty: true
+    profiles:
+      - touch-setup
+    command: geomagic-touch-setup
