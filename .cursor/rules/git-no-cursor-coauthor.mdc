@@ -1,0 +1,9 @@
+---
+description: Never add Cursor co-author trailers to git commits
+alwaysApply: true
+---
+
+# Commits: sem assinatura Cursor
+
+- **Nunca** acrescentar `Co-authored-by: Cursor <cursoragent@cursor.com>` (nem variantes) à mensagem de commit.
+- Ao criar commits (incluindo merges/amends), usar apenas a mensagem solicitada pelo utilizador ou um resumo técnico neutro, **sem** trailers de co-autoria da ferramenta.
