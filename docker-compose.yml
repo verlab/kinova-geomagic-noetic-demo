@@ -53,15 +53,21 @@ services:
     command: geomagic-touch-diagnostic
     profiles: ["setup", "calibration"]
 
-  # Opcional: exemplo oficial OpenHaptics QuickHaptics (dente / cavity).
-  # Requer a mesma imagem já construída (`docker compose build`).
-  # Uso: docker compose --profile examples run --rm teeth-cavity-pick
+  # OpenHaptics + GL não podem tropeçar em nouveau do host: força Mesa swrast aqui (vale sem rebuild da imagem).
   teeth-cavity-pick:
     <<: *demo-common
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
-    # OpenGL usa llvmpipe por omissão (run-teeth-cavity-pick). GPU: TEETH_TRY_GPU_GL=1 (pode dar nouveau).
-    command: run-teeth-cavity-pick
+    command:
+      - bash
+      - -lc
+      - |
+        unset vblank_mode || true
+        export LIBGL_ALWAYS_SOFTWARE=1
+        export GALLIUM_DRIVER=llvmpipe
+        export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+        unset __GLX_VENDOR_LIBRARY_NAME __NV_PRIME_RENDER_OFFLOAD 2>/dev/null || true
+        exec /usr/local/bin/run-teeth-cavity-pick
 
 volumes:
   geomagic-touch-config:

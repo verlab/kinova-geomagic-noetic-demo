@@ -22,12 +22,16 @@ export GTDD_HOME="${GTDD_HOME:-/usr/share/3DSystems}"
 # PhantomIO + Qt from vendor install path (libraries are not under GTDD_HOME).
 export LD_LIBRARY_PATH="/opt/geomagic_touch_device_driver/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 
-# OpenGL no Docker: usar Mesa llvmpipe por omissão — evita nouveau/DRI partido (HL_DEVICE_ERROR,
-# "corrupted double-linked list"). Para tentar GPU do host (melhor fps, pode falhar): TEETH_TRY_GPU_GL=1
-export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+# OpenGL: Mesa software (nouveau/DRI no Docker partem HL/HD durante o QuickHaptics render).
+unset vblank_mode 2>/dev/null || true
+export LIBGL_ALWAYS_SOFTWARE=1
+export GALLIUM_DRIVER=llvmpipe
+export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+unset __GLX_VENDOR_LIBRARY_NAME __NV_PRIME_RENDER_OFFLOAD 2>/dev/null || true
+# Experimental: GLX acelerado (pode falhar com nouveau)
 case "${TEETH_TRY_GPU_GL:-0}" in
   1|true|yes|on)
-    unset LIBGL_ALWAYS_SOFTWARE 2>/dev/null || true
+    unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE 2>/dev/null || true
     ;;
 esac
 
