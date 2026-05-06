@@ -16,10 +16,10 @@ fi
 # Mesh/resources loaders in QuickHaptics still look for this legacy SensAble path.
 export OH_SDK_BASE="${OH_SDK_BASE:-/opt/OpenHaptics/Developer/3.4-0}"
 
-# Must match vendor install — same as /etc/profile.d on a native Touch driver install.
-export GTDD_HOME="${GTDD_HOME:-/opt/geomagic_touch_device_driver}"
+# 3D Systems: GTDD_HOME is the *config* dir (pairing), not /opt/geomagic_touch_device_driver.
+export GTDD_HOME="${GTDD_HOME:-/usr/share/3DSystems}"
 
-# PhantomIO / Geomagic Touch user-space driver (must resolve before generic /usr/lib).
+# PhantomIO + Qt from vendor install path (libraries are not under GTDD_HOME).
 export LD_LIBRARY_PATH="/opt/geomagic_touch_device_driver/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 
 # Without GPU/device passthrough, DRI drivers (e.g. nouveau) often fail inside Docker — use Mesa

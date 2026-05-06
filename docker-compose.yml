@@ -14,11 +14,13 @@ x-demo-common: &demo-common
     LANG: en_US.UTF-8
     LC_ALL: en_US.UTF-8
     LC_NUMERIC: en_US.UTF-8
-    # Geomagic Touch driver (libPhantomIOLib): required or setup/HD init fails with "Config directory"
-    GTDD_HOME: /opt/geomagic_touch_device_driver
+    # Phantom/libPhantom: config + pairing live here (NOT under /opt/geomagic_... — see 3D Systems install PDF).
+    GTDD_HOME: /usr/share/3DSystems
     XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
   volumes:
     - /tmp/.X11-unix:/tmp/.X11-unix
+    # Persist Touch pairing across geomagic-setup / teeth-cavity-pick / demo containers
+    - geomagic-touch-config:/usr/share/3DSystems
   stdin_open: true
   tty: true
 
@@ -58,3 +60,6 @@ services:
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
     command: run-teeth-cavity-pick
+
+volumes:
+  geomagic-touch-config:

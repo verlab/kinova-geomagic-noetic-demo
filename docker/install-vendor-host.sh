@@ -60,8 +60,8 @@ fi
 write_profile_d() {
   cat <<'PROFILE'
 # geomagic-touch-vendor.sh — written by docker/install-vendor-host.sh
-# Required by libPhantomIOLib / Geomagic Touch Setup (same as Docker ENV GTDD_HOME).
-export GTDD_HOME=/opt/geomagic_touch_device_driver
+# GTDD_HOME = pairing/config store (3D Systems); driver install stays under /opt/geomagic_touch_device_driver.
+export GTDD_HOME=/usr/share/3DSystems
 export OPENHAPTICS_ROOT=/usr
 PROFILE
 }
@@ -90,8 +90,24 @@ run_vendor_install() {
   fi
 }
 
+ensure_config_dirs() {
+  if ${DRY_RUN}; then
+    echo "[dry-run] sudo mkdir -p /usr/share/3DSystems/config && sudo chmod 755 ..."
+    return 0
+  fi
+  if [[ ${EUID:-1} -eq 0 ]]; then
+    mkdir -p /usr/share/3DSystems/config
+    chmod 755 /usr/share/3DSystems /usr/share/3DSystems/config
+  else
+    sudo mkdir -p /usr/share/3DSystems/config
+    sudo chmod 755 /usr/share/3DSystems /usr/share/3DSystems/config
+  fi
+  echo "Ensured /usr/share/3DSystems/config (GTDD_HOME for pairing)."
+}
+
 if ${DRY_RUN}; then
   echo "[dry-run] sudo bash ${INSTALL_INNER} ${VENDOR_DIR}"
+  ensure_config_dirs
   install_profile_d
   echo "Done (dry-run)."
   exit 0
@@ -105,6 +121,7 @@ fi
 echo "Installing vendor payloads from ${VENDOR_DIR} into /usr and /opt ..."
 echo "This overwrites OpenHaptics-related files under /usr (same as Docker build)."
 run_vendor_install
+ensure_config_dirs
 install_profile_d
 
 echo ""

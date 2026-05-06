@@ -53,10 +53,12 @@ RUN chmod +x /tmp/install_vendor_geomagic.sh \
   && /tmp/install_vendor_geomagic.sh /tmp/geomagic-vendor \
   && rm -rf /tmp/geomagic-vendor /tmp/install_vendor_geomagic.sh
 
-# Geomagic Touch driver (libPhantomIOLib42) expects this; without it: "Config directory not set correctly"
-# and HD_COMM_CONFIG_ERROR. Normal .deb install sets GTDD_HOME via /etc/profile.d — we replicate for Docker.
-RUN mkdir -p /tmp/xdg-runtime-root && chmod 700 /tmp/xdg-runtime-root
-ENV GTDD_HOME=/opt/geomagic_touch_device_driver
+# GTDD_HOME must be the *configuration* directory (3D Systems install guide), not the driver tree under /opt.
+# Pairing from Geomagic_Touch_Setup is stored here; OpenHaptics + libPhantom read the same path.
+# Driver binaries/libs stay in /opt/geomagic_touch_device_driver (see docker/geomagic-touch-setup.sh).
+RUN mkdir -p /tmp/xdg-runtime-root && chmod 700 /tmp/xdg-runtime-root \
+ && mkdir -p /usr/share/3DSystems/config && chmod 755 /usr/share/3DSystems /usr/share/3DSystems/config
+ENV GTDD_HOME=/usr/share/3DSystems
 ENV XDG_RUNTIME_DIR=/tmp/xdg-runtime-root
 
 COPY docker/geomagic-touch-setup.sh /usr/local/bin/geomagic-touch-setup

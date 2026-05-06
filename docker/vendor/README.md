@@ -9,6 +9,8 @@ Redistribution may be restricted by 3D Systems / vendor license; keep compliance
 
 ## After build
 
-The Dockerfile sets **`GTDD_HOME=/opt/geomagic_touch_device_driver`** (required for `libPhantomIOLib42` / OpenHaptics; without it you get “Config directory not set correctly” and the Touch does not enumerate). If you use an old image, rebuild or export **`GTDD_HOME`** in `docker compose`.
+The Dockerfile sets **`GTDD_HOME=/usr/share/3DSystems`** (configuration / pairing directory per 3D Systems install guides). **`LD_LIBRARY_PATH`** still uses **`/opt/geomagic_touch_device_driver/lib`**. Do **not** point `GTDD_HOME` at `/opt/geomagic_touch_device_driver`; Touch Setup stores pairing under `$GTDD_HOME`, and OpenHaptics reads the same path.
+
+Docker Compose mounts a named volume on **`/usr/share/3DSystems`** so pairing persists across containers. If you use an old image, rebuild.
 
 If the **USB** Touch still misbehaves on **Ubuntu 20.04+**, 3D Systems / VeRLab notes report that **older 2016** USB stacks can misbehave while **newer Touch drivers (2019+)** work better; Ethernet Touch was often more reliable with the 2016-era USB quirks. Consider a newer vendor tarball if problems persist after **`GTDD_HOME`** is correct.
