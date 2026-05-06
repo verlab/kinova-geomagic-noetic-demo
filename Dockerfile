@@ -60,8 +60,9 @@ ENV GTDD_HOME=/opt/geomagic_touch_device_driver
 ENV XDG_RUNTIME_DIR=/tmp/xdg-runtime-root
 
 COPY docker/geomagic-touch-setup.sh /usr/local/bin/geomagic-touch-setup
+COPY docker/geomagic-touch-diagnostic.sh /usr/local/bin/geomagic-touch-diagnostic
 COPY docker/run-teeth-cavity-pick.sh /usr/local/bin/run-teeth-cavity-pick
-RUN chmod +x /usr/local/bin/geomagic-touch-setup /usr/local/bin/run-teeth-cavity-pick
+RUN chmod +x /usr/local/bin/geomagic-touch-setup /usr/local/bin/geomagic-touch-diagnostic /usr/local/bin/run-teeth-cavity-pick
 
 COPY docker/udev/70-geomagic-touch.rules /etc/udev/rules.d/70-geomagic-touch.rules
 

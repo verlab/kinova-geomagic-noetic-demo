@@ -34,13 +34,21 @@ services:
     #   demo_hardware.launch robot_ip:=192.168.1.10
     command: roslaunch kinova_geomagic_demo demo_rviz.launch
 
-  # Geomagic Touch: ferramenta gráfica de emparelhamento USB/LAN (requer DISPLAY).
-  # O dispositivo não usa IP no ROS; Kinova sim (robot_ip). Ver README.
+  # --- Geomagic Touch (perfil setup | calibration): emparelhamento / IP + diagnóstico do fabricante ---
+  # Uso:  docker compose --profile setup run --rm geomagic-setup
+  #       docker compose --profile setup run --rm geomagic-diagnostic
   geomagic-setup:
     <<: *demo-common
     container_name: kinova_geomagic_setup
     command: geomagic-touch-setup
-    profiles: ["setup"]
+    profiles: ["setup", "calibration"]
+
+  # Teste de comunicação / ferramenta de diagnóstico (nome no tarball 2016: Geomagic_Touch_Diagnostic)
+  geomagic-diagnostic:
+    <<: *demo-common
+    container_name: kinova_geomagic_diagnostic
+    command: geomagic-touch-diagnostic
+    profiles: ["setup", "calibration"]
 
   # Opcional: exemplo oficial OpenHaptics QuickHaptics (dente / cavity).
   # Requer a mesma imagem já construída (`docker compose build`).
