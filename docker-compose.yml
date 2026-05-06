@@ -60,7 +60,7 @@ services:
     container_name: kinova_geomagic_teeth_cavity
     command:
       - bash
-      - -lc
+      - -c
       - |
         unset vblank_mode || true
         export LIBGL_ALWAYS_SOFTWARE=1

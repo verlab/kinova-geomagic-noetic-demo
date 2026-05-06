@@ -8,6 +8,7 @@ ENV LC_ALL=en_US.UTF-8
 ENV LC_NUMERIC=en_US.UTF-8
 ENV OPENHAPTICS_ROOT=/usr
 
+# Mesa DRI (*.so incl. llvmpipe) para GL software no contentor — necessário quando LIBGL_ALWAYS_SOFTWARE=1
 RUN apt-get update \
   && apt-get install -y --no-install-recommends \
   locales \
@@ -21,6 +22,7 @@ RUN apt-get update \
   libtinfo5 \
   freeglut3-dev \
   libglu1-mesa-dev \
+  libgl1-mesa-dri \
   ros-noetic-rviz \
   ros-noetic-robot-state-publisher \
   ros-noetic-joint-state-publisher \
