@@ -245,12 +245,9 @@ HDCallbackCode HDCALLBACK omni_state_callback(void *pUserData)
   hdGetDoublev(HD_CURRENT_TRANSFORM, transform);
   hduVector3Dd joints;
   hdGetDoublev(HD_CURRENT_JOINT_ANGLES, joints);
-  // Try to get a error
-  HDErrorInfo error2;
-  if (HD_DEVICE_ERROR(error2 = hdGetError())) {
-    ROS_ERROR("[Geomagic] FAIL - Joint Angles");
-    return -1;
-  }
+  // Do not return early here: return -1 is not a valid HDCallbackCode and skips hdEndFrame(),
+  // which stops the scheduler / freezes /geomagic/joint_states. Real faults are handled after hdEndFrame.
+
   //ROS_INFO("Joints: %.2f, %.2f, %.2f",joints[0],joints[1],joints[2]);
 
   hduVector3Dd gimbal_angles;
