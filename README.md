@@ -162,6 +162,13 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 | `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
 | Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
 
+### Known issues (tutorials / vendor tools)
+
+- **Locale (`LANG` / `LC_NUMERIC` / `LC_ALL`):** tutorials warn that non‑English locales can make haptic **position read as constant or zero**. In **Docker**, the image and `docker-compose.yml` already set **`LANG`**, **`LC_ALL`**, and **`LC_NUMERIC`** to **`en_US.UTF-8`**, matching that guidance for processes running **inside the container**. Native installs on the host must set locale there yourself.
+- **`QBackingStore::flush()… non-exposed window` when closing **Geomagic Touch Diagnostic**:** comes from the **vendor‑bundled Qt** in the Geomagic driver package, not from this repo. It is a **harmless console warning** on exit (see [QTBUG-28613](https://bugreports.qt.io/browse/QTBUG-28613)); you can ignore it. We do not ship a newer Qt for that binary.
+
+No software stack can honestly “guarantee” every third‑party GUI or firmware edge case; the items above describe what **this Docker setup already applies** versus what remains **upstream / vendor**.
+
 ---
 
 ## License

@@ -117,6 +117,12 @@ public:
     state->buttons_prev[0] = 0;
     state->buttons_prev[1] = 0;
     hduVector3Dd zeros(0, 0, 0);
+    state->force = zeros;
+    state->jointTorque = zeros;
+    state->position = zeros;
+    for (int i = 0; i < 7; ++i) {
+      state->thetas[i] = 0.f;
+    }
     state->velocity = zeros;
     state->inp_vel1 = zeros;  //3x1 history of velocity
     state->inp_vel2 = zeros;  //3x1 history of velocity
