@@ -5,7 +5,7 @@
 #   - Geomagic Touch must be USB-connected; container needs privileged + host network (see compose).
 #   - Pair/calibrate once: docker compose --profile setup run --rm geomagic-setup
 #
-# Optional env overrides: OH_SDK_BASE, LIBGL_ALWAYS_SOFTWARE=0 (host GPU / DRI passthrough).
+# Optional env: OH_SDK_BASE, TEETH_FORCE_SOFTWARE_GL=1 (llvmpipe if GPU/GLX falha).
 set -euo pipefail
 ROOT="/opt/OpenHaptics/Developer/3.4-0/QuickHaptics/examples/TeethCavityPick/TeethCavityPickGLUT"
 if [[ ! -d "${ROOT}" ]]; then
@@ -22,9 +22,17 @@ export GTDD_HOME="${GTDD_HOME:-/usr/share/3DSystems}"
 # PhantomIO + Qt from vendor install path (libraries are not under GTDD_HOME).
 export LD_LIBRARY_PATH="/opt/geomagic_touch_device_driver/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 
-# Without GPU/device passthrough, DRI drivers (e.g. nouveau) often fail inside Docker — use Mesa
-# software rasterizer. Set LIBGL_ALWAYS_SOFTWARE=0 and pass /dev/dri if you use host GPU.
-export LIBGL_ALWAYS_SOFTWARE="${LIBGL_ALWAYS_SOFTWARE:-1}"
+# QuickHaptics + GLUT: com LIBGL_ALWAYS_SOFTWARE=1 (llvmpipe) no Docker é comum o stylus sentir-força /
+# mover, mas o ecrã 3D ficar **congelado**. Por omissão não fixamos llvmpipe — usa GLX acelerado
+# junto com `ipc: host` no docker-compose (MIT-SHM). Para voltar ao software renderer:
+#   TEETH_FORCE_SOFTWARE_GL=1 docker compose --profile examples up teeth-cavity-pick
+case "${TEETH_FORCE_SOFTWARE_GL:-0}" in
+  1|true|yes|on) export LIBGL_ALWAYS_SOFTWARE=1 ;;
+  *)
+    unset LIBGL_ALWAYS_SOFTWARE 2>/dev/null || true
+    export vblank_mode=0
+    ;;
+esac
 
 cd "${ROOT}"
 if [[ ! -x ./TeethCavityPickGLUT ]]; then

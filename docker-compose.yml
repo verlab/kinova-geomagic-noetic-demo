@@ -9,6 +9,8 @@ x-demo-common: &demo-common
   image: kinova-geomagic-noetic:demo
   network_mode: host
   privileged: true
+  # GLX/Mesa ↔ X11 (MIT-SHM); sem isto GLUT/OpenGL em Docker costuma não redesenhar (háptica ok, vista parada).
+  ipc: host
   environment:
     DISPLAY: ${DISPLAY:-:0}
     LANG: en_US.UTF-8
@@ -59,4 +61,5 @@ services:
     <<: *demo-common
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
+    # Se OpenGL falhar (nouveau/...), forçar llvmpipe: TEETH_FORCE_SOFTWARE_GL=1 docker compose ...
     command: run-teeth-cavity-pick
