@@ -42,6 +42,8 @@ git submodule update --init --recursive
 
 ## Run with Docker Compose (RViz visualization)
 
+**Só existe um serviço principal, `demo`.** Os drivers (OpenHaptics + `libPhantomIOLib` + pastas do vendor) entram **na imagem** quando corre `docker compose build` — não é preciso (nem desejável) um segundo “serviço de driver”. O container `demo` já traz o `omni_cartesian` compilado e as bibliotecas no sistema de ficheiros.
+
 This uses **`ros:noetic-ros-base`** plus apt-installed RViz stack (smaller than `desktop-full`). The image builds **`ros_kortex`** from source (Conan 1.x); `kortex_gazebo` and `kortex_examples` are **blacklisted** to save build time and image size.
 
 ```bash
@@ -52,22 +54,32 @@ docker compose up
 
 Default command: `roslaunch kinova_geomagic_demo demo_rviz.launch` — dual **RobotModel** (Kinova with `sim:=true` + Geomagic model) and two **joint_state_publisher_gui** sliders.
 
+### Optional: OpenHaptics “cavity” example (QuickHaptics)
+
+After building the image, you can run the vendor **TeethCavityPick** (GLUT) demo — useful to confirm the haptic device without ROS:
+
+```bash
+docker compose --profile examples run --rm teeth-cavity-pick
+```
+
+On first run it compiles inside the container; requires X11 (`DISPLAY`).
+
 ### Geomagic vendor stack (Docker)
 
 Archives under `docker/vendor/` (from `phantom_omni/`):
 
-- `openhaptics_3.4-0-developer-edition-amd64.tar.gz` → headers `HD`/`HDU` and libs under `/usr/lib` (`libHD`, `libHL`, static `libHDU`, …).
+- `openhaptics_3.4-0-developer-edition-amd64.tar.gz` → headers (`HD`, `HDU`, `HL`, `QH`), libs under `/usr/lib`, and **`/opt/OpenHaptics/...`** (examples incl. TeethCavityPick).
 - `geomagic_touch_device_driver_2016.1-1-amd64.tar.gz` → `libPhantomIOLib42.so` and `/opt/geomagic_touch_device_driver/` (**`Geomagic_Touch_Setup`** GUI for USB/LAN).
 
-**Pair / configure the device (recommended for Ethernet/IP Touch):**
+**Pair / configure the device (recommended for Ethernet/IP Touch)** — usa o **mesmo** serviço/imagem `demo`:
 
 ```bash
 xhost +local:root
 docker compose build
-docker compose --profile touch-setup run --rm geomagic-touch-setup
+docker compose run --rm demo geomagic-touch-setup
 ```
 
-Wrapper sets `LD_LIBRARY_PATH` and `QT_PLUGIN_PATH` for the bundled Qt plugins.
+The wrapper sets `LD_LIBRARY_PATH` and `QT_PLUGIN_PATH` for the bundled Qt plugins.
 
 **USB:** install `docker/udev/70-geomagic-touch.rules` on the **host** if `hidraw` permissions fail; edit VID/PID from `lsusb` if needed.
 

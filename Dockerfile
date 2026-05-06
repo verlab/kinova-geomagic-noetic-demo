@@ -19,6 +19,8 @@ RUN apt-get update \
   libncurses5-dev \
   libncurses5 \
   libtinfo5 \
+  freeglut3-dev \
+  libglu1-mesa-dev \
   ros-noetic-rviz \
   ros-noetic-robot-state-publisher \
   ros-noetic-joint-state-publisher \
@@ -52,7 +54,8 @@ RUN chmod +x /tmp/install_vendor_geomagic.sh \
   && rm -rf /tmp/geomagic-vendor /tmp/install_vendor_geomagic.sh
 
 COPY docker/geomagic-touch-setup.sh /usr/local/bin/geomagic-touch-setup
-RUN chmod +x /usr/local/bin/geomagic-touch-setup
+COPY docker/run-teeth-cavity-pick.sh /usr/local/bin/run-teeth-cavity-pick
+RUN chmod +x /usr/local/bin/geomagic-touch-setup /usr/local/bin/run-teeth-cavity-pick
 
 COPY docker/udev/70-geomagic-touch.rules /etc/udev/rules.d/70-geomagic-touch.rules
 

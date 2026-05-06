@@ -12,9 +12,17 @@ OH_ROOT="${VENDOR_DIR}/openhaptics_3.4-0-developer-edition-amd64"
 cp -a "${OH_ROOT}/usr/include/HD" /usr/include/
 cp -a "${OH_ROOT}/usr/include/HDU" /usr/include/
 cp -a "${OH_ROOT}/usr/include/HL" /usr/include/
+cp -a "${OH_ROOT}/usr/include/HLU" /usr/include/
+cp -a "${OH_ROOT}/usr/include/QH" /usr/include/
 cp -a "${OH_ROOT}/usr/lib/"* /usr/lib/
+# QuickHaptics / HD examples (e.g. TeethCavityPick) live under opt/
+if [[ -d "${OH_ROOT}/opt/OpenHaptics" ]]; then
+  cp -a "${OH_ROOT}/opt/OpenHaptics" /opt/
+fi
 ln -sf libHD.so.3.4.0 /usr/lib/libHD.so
 ln -sf libHL.so.3.4.0 /usr/lib/libHL.so
+ln -sf libQH.so.3.4.0 /usr/lib/libQH.so
+ln -sf libQHGLUTWrapper.so.3.4.0 /usr/lib/libQHGLUTWrapper.so
 
 tar -xzf geomagic_touch_device_driver_2016.1-1-amd64.tar.gz
 GM_ROOT="${VENDOR_DIR}/geomagic_touch_device_driver_2016.1-1-amd64"
