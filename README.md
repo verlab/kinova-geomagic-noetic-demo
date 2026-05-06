@@ -61,14 +61,17 @@ docker compose build
 
 This installs vendor libraries and headers inside the image, builds `ros_kortex`, and compiles `geomagic_control` (`omni_cartesian`). Expect a long first build.
 
-### 4. Run the default demo (RViz)
+### 4. Run the default demo (hardware teleop)
 
 ```bash
 xhost +local:root   # Linux X11, if required
 docker compose up
 ```
 
-Default command: `roslaunch kinova_geomagic_demo demo_rviz.launch` — simulated Kinova (`sim:=true`) plus Geomagic URDF and joint GUIs.
+Default service command: **`demo_hardware.launch`** — real **Kinova Gen3** + **Geomagic** Cartesian teleop (`robot_ip` defaults to **192.168.1.10**; set **`KINOVA_ROBOT_IP`** in a `.env` file or your shell if different).
+
+**RViz-only** (no robot / no haptic driver):  
+`docker compose run --rm demo roslaunch kinova_geomagic_demo demo_rviz.launch`
 
 Stop with `Ctrl+C`.
 
@@ -77,6 +80,8 @@ Stop with `Ctrl+C`.
 ## Execution variants
 
 ### Real Kinova + Geomagic (hardware)
+
+`docker compose up` already starts **`demo_hardware.launch`** (see above). To run a one-off with a custom command:
 
 ```bash
 docker compose run --rm demo \

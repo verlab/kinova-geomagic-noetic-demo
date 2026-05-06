@@ -33,10 +33,9 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kinova_geomagic_noetic
-    # Troque para hardware real, ex.:
-    #   demo_kinova_only.launch robot_ip:=192.168.1.10
-    #   demo_hardware.launch robot_ip:=192.168.1.10
-    command: roslaunch kinova_geomagic_demo demo_rviz.launch
+    # Hardware: Geomagic ↔ Kinova. IP do braço via .env: KINOVA_ROBOT_IP=192.168.1.10 (omissão: 192.168.1.10)
+    # RViz apenas (sem robô/háptico): roslaunch kinova_geomagic_demo demo_rviz.launch
+    command: roslaunch kinova_geomagic_demo demo_hardware.launch robot_ip:=${KINOVA_ROBOT_IP:-192.168.1.10}
 
   # --- Geomagic Touch (perfil setup | calibration): emparelhamento / IP + diagnóstico do fabricante ---
   # Uso:  docker compose --profile setup run --rm geomagic-setup
@@ -61,7 +60,7 @@ services:
     <<: *demo-common
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
-    # Se OpenGL falhar (nouveau/...), forçar llvmpipe: TEETH_FORCE_SOFTWARE_GL=1 docker compose ...
+    # OpenGL usa llvmpipe por omissão (run-teeth-cavity-pick). GPU: TEETH_TRY_GPU_GL=1 (pode dar nouveau).
     command: run-teeth-cavity-pick
 
 volumes:
