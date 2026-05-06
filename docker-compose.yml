@@ -1,13 +1,16 @@
 # Um único serviço principal: `demo`.
 # Drivers Geomagic + OpenHaptics são instalados na **imagem** durante `docker compose build`
 # (Dockerfile + docker/install_vendor_geomagic.sh), não como segundo container.
+#
+# DISPLAY: se não exportar no host, o Compose usa :0 (sessão gráfica local típica).
+# SSH com X11: exporte antes, ex.: DISPLAY=localhost:10.0
 
 x-demo-common: &demo-common
   image: kinova-geomagic-noetic:demo
   network_mode: host
   privileged: true
   environment:
-    DISPLAY: ${DISPLAY}
+    DISPLAY: ${DISPLAY:-:0}
     LANG: en_US.UTF-8
     LC_ALL: en_US.UTF-8
     LC_NUMERIC: en_US.UTF-8
@@ -23,8 +26,18 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kinova_geomagic_noetic
-    # Troque para hardware real, ex.: demo_hardware.launch robot_ip:=192.168.1.10
+    # Troque para hardware real, ex.:
+    #   demo_kinova_only.launch robot_ip:=192.168.1.10
+    #   demo_hardware.launch robot_ip:=192.168.1.10
     command: roslaunch kinova_geomagic_demo demo_rviz.launch
+
+  # Geomagic Touch: ferramenta gráfica de emparelhamento USB/LAN (requer DISPLAY).
+  # O dispositivo não usa IP no ROS; Kinova sim (robot_ip). Ver README.
+  geomagic-setup:
+    <<: *demo-common
+    container_name: kinova_geomagic_setup
+    command: geomagic-touch-setup
+    profiles: ["setup"]
 
   # Opcional: exemplo oficial OpenHaptics QuickHaptics (dente / cavity).
   # Requer a mesma imagem já construída (`docker compose build`).
