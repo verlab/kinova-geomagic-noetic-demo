@@ -1,37 +1,31 @@
-# Kinova Gen3 + Geomagic Touch — ROS Noetic demo
+# kinova-geomagic-noetic
 
-Tutorial-style workspace for **bilateral-style teleoperation**: drive a **Kinova Gen3** from a **3D Systems Geomagic Touch** (OpenHaptics) and feed simple haptic cues from the arm using **PyKDL** (gravity torques or the driver’s external-wrench estimate), similar in spirit to the older `2017-itv-teleoperacao-third-party` packages but **Python 3**, **Noetic**, and a **reproducible `ros_kortex` pin**.
+ROS **Noetic** reference workspace for **Kinova Gen3** teleoperation with a **Geomagic Touch** haptic device: Cartesian teleoperation via KDL, optional haptic feedback from the arm, **Docker** images with vendor **OpenHaptics** and **Geomagic** payloads, and reproducible **[ros_kortex](https://github.com/Kinovarobotics/ros_kortex) `v2.5.2`**.
 
-## What is included
+Maintained by [VeRLab](https://github.com/verlab) (UFMG).
 
-| Component | Source |
-|-----------|--------|
-| **Kinova driver / URDF / MoveIt configs** | Git submodule [Kinovarobotics/ros_kortex](https://github.com/Kinovarobotics/ros_kortex) at tag **`v2.5.2`** (`noetic-devel` line; latest public release as of this repo’s creation). |
-| **Geomagic driver (`omni_cartesian`) + messages** | From `phantom_omni/geomagic_control`; the Docker image installs **OpenHaptics 3.4** + **Geomagic Touch device driver 2016.1** from `docker/vendor/*.tar.gz` and links against **Bullet LinearMath**. |
-| **Geomagic URDF** | `geomagic.urdf` + `meshes/*.stl` from `phantom_omni/geomagic_description` (visuals). Optional `geomagic_minimal.urdf` (primitives only) kept for quick tests. |
-| **Demo nodes (`kinova_geomagic_demo`)** | New: Cartesian velocity IBVS-style teleop + haptic bridge node. |
+---
 
-The snapshot under `2017-itv-teleoperacao-third-party/ros_kortex` is **not** maintained as closely as upstream; this repo tracks **upstream `v2.5.2`** explicitly.
+## Prerequisites
 
-## Prerequisites (host)
+| Requirement | Notes |
+|-------------|--------|
+| **Docker** & **Docker Compose** v2 | Recommended workflow |
+| **X11** | For RViz and vendor GUIs (`xhost +local:root` on Linux if needed) |
+| **Geomagic vendor archives** | Place both `.tar.gz` files under `docker/vendor/` before building (see [Vendor archives](#vendor-archives)) |
+| **Hardware** (optional) | Gen3 on LAN; Touch via USB or LAN (Touch X) |
 
-- **Docker** and **Docker Compose** v2.
-- For GUI: X11/Wayland setup (`xhost +local:root` or your usual X11 forwarding pattern).
-- **Real robot**: Gen3 reachable on the LAN (default `192.168.1.10` in launch files).
-- **Real Geomagic Touch**: reachable via **USB** or **LAN** (Touch X / Ethernet). Vendor archives are installed during the Docker build (see `docker/vendor/`).
+---
 
-## Troubleshooting
+## Quick start (Docker)
 
-- **rosdep skips Noetic** — Noetic may be marked end-of-life in the rosdistro index; use `rosdep update --include-eol-distros` (as in the Dockerfile).
-- **`moveit_fake_controller_manager`** — Some mirrors omit this deb; the Docker build skips it via `--skip-keys moveit_fake_controller_manager`. Full MoveIt simulations may need extra packages installed manually.
-- **OpenHaptics numeric locale** — If joint readings are zero, force US numeric locale (already in Dockerfile / Compose): `LC_ALL=en_US.UTF-8`, `LC_NUMERIC=en_US.UTF-8` (see `phantom_omni/readme.md`).
-- **Vendor archives** — Files in `docker/vendor/*.tar.gz` are proprietary; respect 3D Systems / redistribution terms before publishing images.
+### 1. Clone
 
-## Clone
+Clone this repository **with submodules** (required for `ros_kortex`):
 
 ```bash
-git clone --recurse-submodules <path-or-url-to-this-repo>
-cd <repo-directory>
+git clone --recurse-submodules https://github.com/verlab/kinova-geomagic-noetic-demo.git
+cd kinova-geomagic-noetic-demo
 ```
 
 If you already cloned without submodules:
@@ -40,115 +34,125 @@ If you already cloned without submodules:
 git submodule update --init --recursive
 ```
 
-## Run with Docker Compose (RViz visualization)
+### 2. Vendor archives
 
-**Só existe um serviço principal, `demo`.** Os drivers (OpenHaptics + `libPhantomIOLib` + pastas do vendor) entram **na imagem** quando corre `docker compose build` — não é preciso (nem desejável) um segundo “serviço de driver”. O container `demo` já traz o `omni_cartesian` compilado e as bibliotecas no sistema de ficheiros.
+Ensure `docker/vendor/` contains:
 
-This uses **`ros:noetic-ros-base`** plus apt-installed RViz stack (smaller than `desktop-full`). The image builds **`ros_kortex`** from source (Conan 1.x); `kortex_gazebo` and `kortex_examples` are **blacklisted** to save build time and image size.
+- `openhaptics_3.4-0-developer-edition-amd64.tar.gz`
+- `geomagic_touch_device_driver_2016.1-1-amd64.tar.gz`
+
+These files are **not** redistributed by Kinova/VeRLab; obtain them under your 3D Systems license and copy them into `docker/vendor/` before build.
+
+### 3. Build the image
 
 ```bash
-xhost +local:root   # if needed for RViz on X11
 docker compose build
+```
+
+This installs vendor libraries and headers inside the image, builds `ros_kortex`, and compiles `geomagic_control` (`omni_cartesian`). Expect a long first build.
+
+### 4. Run the default demo (RViz)
+
+```bash
+xhost +local:root   # Linux X11, if required
 docker compose up
 ```
 
-Default command: `roslaunch kinova_geomagic_demo demo_rviz.launch` — dual **RobotModel** (Kinova with `sim:=true` + Geomagic model) and two **joint_state_publisher_gui** sliders.
+Default command: `roslaunch kinova_geomagic_demo demo_rviz.launch` — simulated Kinova (`sim:=true`) plus Geomagic URDF and joint GUIs.
 
-### Optional: OpenHaptics “cavity” example (QuickHaptics)
+Stop with `Ctrl+C`.
 
-After building the image, you can run the vendor **TeethCavityPick** (GLUT) demo — useful to confirm the haptic device without ROS:
+---
 
-```bash
-docker compose --profile examples run --rm teeth-cavity-pick
-```
+## Execution variants
 
-On first run it compiles inside the container; requires X11 (`DISPLAY`).
-
-### Geomagic vendor stack (Docker)
-
-Archives under `docker/vendor/` (from `phantom_omni/`):
-
-- `openhaptics_3.4-0-developer-edition-amd64.tar.gz` → headers (`HD`, `HDU`, `HL`, `QH`), libs under `/usr/lib`, and **`/opt/OpenHaptics/...`** (examples incl. TeethCavityPick).
-- `geomagic_touch_device_driver_2016.1-1-amd64.tar.gz` → `libPhantomIOLib42.so` and `/opt/geomagic_touch_device_driver/` (**`Geomagic_Touch_Setup`** GUI for USB/LAN).
-
-**Pair / configure the device (recommended for Ethernet/IP Touch)** — usa o **mesmo** serviço/imagem `demo`:
-
-```bash
-xhost +local:root
-docker compose build
-docker compose run --rm demo geomagic-touch-setup
-```
-
-The wrapper sets `LD_LIBRARY_PATH` and `QT_PLUGIN_PATH` for the bundled Qt plugins.
-
-**USB:** install `docker/udev/70-geomagic-touch.rules` on the **host** if `hidraw` permissions fail; edit VID/PID from `lsusb` if needed.
-
-### Hardware stack (Kinova + Geomagic)
-
-1. **Build** — `docker compose build` (both `.tar.gz` files must be present in `docker/vendor/`).
-2. **Networking** — `network_mode: host` helps ROS and the LAN Touch driver reach the robot/device.
-3. **Run**:
+### Real Kinova + Geomagic (hardware)
 
 ```bash
 docker compose run --rm demo \
   roslaunch kinova_geomagic_demo demo_hardware.launch robot_ip:=192.168.1.10
 ```
 
-Useful launch arguments:
+Adjust `robot_ip` to your Gen3 controller. Compose uses `network_mode: host` for ROS and LAN devices.
 
-| Argument | Meaning |
-|----------|---------|
-| `geomagic_driver:=false` | Skip `omni_cartesian` if you inject joint states another way. |
-| `haptic_source:=robot_wrench` | Use `/my_gen3/base_feedback` tool wrench (real robot; default). |
-| `haptic_source:=kdl_gravity` | Use gravity torque + LS wrench mapping (no F/T sensor; educational). |
+| Launch argument | Purpose |
+|-----------------|--------|
+| `geomagic_driver:=false` | Omit `omni_cartesian` if joint states are supplied elsewhere |
+| `haptic_source:=robot_wrench` | Use measured tool wrench from the driver (default on hardware) |
+| `haptic_source:=kdl_gravity` | Gravity-based KDL mapping (no F/T sensor; illustrative) |
 
-### Operating the demo
-
-- **Geomagic dark button** (as in the legacy excavator launch): enable teleop relative to the current stylus pose vs end-effector pose.
-- **Geomagic light button**: disable teleop (zero joint-speed command).
-- **Haptics**: `omni_cartesian` is configured with `torque_mode:=false` so **`ChannelFloat32`** on `/arm/force_feedback` is interpreted as cartesian force components (matches the driver callback).
-
-## Native build (Ubuntu 20.04 / ROS Noetic)
+**Device pairing (USB or LAN, especially Ethernet Touch):** same image, one-off command:
 
 ```bash
-sudo apt install python3-catkin-tools python3-pip
-pip3 install --user 'conan>=1.52,<2'
-conan config set general.revisions_enabled=1
-conan profile new default --detect  # if missing
-conan profile update settings.compiler.libcxx=libstdc++11 default
+docker compose run --rm demo geomagic-touch-setup
+```
 
-mkdir -p ~/ws/src
-ln -sf "$(pwd)/catkin_ws/src/*" ~/ws/src  # or copy
-cd ~/ws
+**USB permissions on the host:** copy `docker/udev/70-geomagic-touch.rules` to `/etc/udev/rules.d/` if needed; update VID/PID from `lsusb`.
+
+### Optional: OpenHaptics TeethCavityPick (“cavity”) example
+
+Non-ROS QuickHaptics sample (builds on first run inside the container):
+
+```bash
+docker compose --profile examples run --rm teeth-cavity-pick
+```
+
+Requires a working `DISPLAY`.
+
+---
+
+## Repository layout
+
+| Path | Content |
+|------|---------|
+| `catkin_ws/src/ros_kortex` | Git submodule at [`Kinovarobotics/ros_kortex`](https://github.com/Kinovarobotics/ros_kortex) tag **`v2.5.2`** |
+| `catkin_ws/src/geomagic_control` | ROS node `omni_cartesian`, OpenHaptics-based |
+| `catkin_ws/src/geomagic_description` | URDF + STL meshes |
+| `catkin_ws/src/kinova_geomagic_demo` | Teleoperation and haptic bridge nodes |
+| `docker/` | Dockerfile helpers, udev sample, vendor install script |
+
+---
+
+## Native build (Ubuntu 20.04, ROS Noetic)
+
+Use when Docker is not preferred. Install Conan 1.x and ROS dependencies as in the Dockerfile, then:
+
+```bash
 rosdep update --include-eol-distros
-rosdep install --from-paths src --ignore-src -y --rosdistro=noetic \
+rosdep install --from-paths catkin_ws/src --ignore-src -y --rosdistro=noetic \
   --skip-keys=openhaptics-ae --skip-keys=moveit_fake_controller_manager
+cd catkin_ws
 catkin_make -DCMAKE_BUILD_TYPE=Release \
   -DCATKIN_BLACKLIST_PACKAGES='kortex_gazebo;kortex_examples'
 source devel/setup.bash
 roslaunch kinova_geomagic_demo demo_rviz.launch
 ```
 
-## Nodes (minimal stack)
+Install OpenHaptics and Geomagic vendor files on the host separately if building `omni_cartesian`.
 
-- **`geomagic_kinova_cartesian_teleop.py`** — Subscribes to `/geomagic/joint_states`, maps stylus pose to desired EE position (relative delta), damped Jacobian pseudoinverse → joint velocities → `SendJointSpeedsCommand`.
-- **`kdl_haptic_feedback.py`** — Publishes `sensor_msgs/ChannelFloat32` on `/arm/force_feedback` for `omni_cartesian`.
-- **`fake_geomagic_joints.py`** — Optional sinusoidal joint motion (no Touch).
+---
 
-## Relationship to the legacy VERLAB tree
+## Operator notes
 
-Concepts and topic naming follow:
+- **Geomagic buttons:** dark button enables teleop (relative stylus vs end-effector); light button disables (zero joint speeds).
+- **Haptics:** `omni_cartesian` uses `torque_mode:=false`; `/arm/force_feedback` carries `sensor_msgs/ChannelFloat32` Cartesian force components.
 
-- `kinova-gen-3/launch/excavator_teleop.launch` — orchestration pattern.
-- `kinova-gen-3/scripts/*kinova*.py` — Kinova services + button semantics (simplified here).
-- `phantom_omni/geomagic_control` — OpenHaptics bridge.
+---
 
-This repo intentionally drops Pioneer/mobile-base coupling and Python 2 idioms.
+## Troubleshooting
+
+| Issue | Action |
+|-------|--------|
+| Noetic packages missing in `rosdep` | Run `rosdep update --include-eol-distros` |
+| `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
+| Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
+
+---
 
 ## License
 
-See `LICENSE`. Third-party packages retain their original licenses where noted (`geomagic_control`, `ros_kortex`).
+See [`LICENSE`](LICENSE). Third-party packages (`ros_kortex`, `geomagic_control`, vendor binaries) remain under their respective licenses.
 
 ## Contributing
 
-See `CONTRIBUTING.md`.
+See [`CONTRIBUTING.md`](CONTRIBUTING.md).
