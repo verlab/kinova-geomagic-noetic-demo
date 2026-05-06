@@ -16,6 +16,9 @@ fi
 # Mesh/resources loaders in QuickHaptics still look for this legacy SensAble path.
 export OH_SDK_BASE="${OH_SDK_BASE:-/opt/OpenHaptics/Developer/3.4-0}"
 
+# Must match vendor install — same as /etc/profile.d on a native Touch driver install.
+export GTDD_HOME="${GTDD_HOME:-/opt/geomagic_touch_device_driver}"
+
 # PhantomIO / Geomagic Touch user-space driver (must resolve before generic /usr/lib).
 export LD_LIBRARY_PATH="/opt/geomagic_touch_device_driver/lib:/usr/lib:${LD_LIBRARY_PATH:-}"
 
