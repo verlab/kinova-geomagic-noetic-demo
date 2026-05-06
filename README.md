@@ -1,5 +1,15 @@
 # kinova-geomagic-noetic
 
+[![Docker build and push to GHCR](https://github.com/verlab/kinova-geomagic-noetic-demo/actions/workflows/docker-publish.yml/badge.svg)](https://github.com/verlab/kinova-geomagic-noetic-demo/actions/workflows/docker-publish.yml)
+[![GitHub release](https://img.shields.io/github/v/release/verlab/kinova-geomagic-noetic-demo?sort=semver&label=release)](https://github.com/verlab/kinova-geomagic-noetic-demo/releases/latest)
+[![GHCR image](https://img.shields.io/badge/ghcr.io-package-2496ED?logo=github)](https://github.com/verlab/kinova-geomagic-noetic-demo/pkgs/container/kinova-geomagic-noetic-demo)
+[![ROS Noetic](https://img.shields.io/badge/ROS-Noetic-22314E?logo=ros)](https://wiki.ros.org/noetic)
+[![Docker](https://img.shields.io/badge/stack-Docker-2496ED?logo=docker&logoColor=white)](https://docs.docker.com/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Last commit](https://img.shields.io/github/last-commit/verlab/kinova-geomagic-noetic-demo)](https://github.com/verlab/kinova-geomagic-noetic-demo/commits/master)
+[![Ubuntu](https://img.shields.io/badge/Ubuntu-20.04-E95420?logo=ubuntu&logoColor=white)](https://releases.ubuntu.com/20.04/)
+[![ros_kortex](https://img.shields.io/badge/ros__kortex-v2.5.2-informational)](https://github.com/Kinovarobotics/ros_kortex/releases/tag/v2.5.2)
+
 ROS **Noetic** reference workspace for **Kinova Gen3** teleoperation with a **Geomagic Touch** haptic device: Cartesian teleoperation via KDL, optional haptic feedback from the arm, **Docker** images with vendor **OpenHaptics** and **Geomagic** payloads, and reproducible **[ros_kortex](https://github.com/Kinovarobotics/ros_kortex) `v2.5.2`**.
 
 Maintained by [VeRLab](https://github.com/verlab) (UFMG).
