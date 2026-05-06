@@ -19,6 +19,9 @@ x-demo-common: &demo-common
     # Phantom/libPhantom: config + pairing live here (NOT under /opt/geomagic_... — see 3D Systems install PDF).
     GTDD_HOME: /usr/share/3DSystems
     XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
+    # RViz/Mesa dentro do Docker: evita novo/tentativas DRI que rebentam o processo (-11).
+    LIBGL_ALWAYS_SOFTWARE: "1"
+    GALLIUM_DRIVER: llvmpipe
   volumes:
     - /tmp/.X11-unix:/tmp/.X11-unix
     # Emparelhamento Geomagic ($GTDD_HOME): volume nomeado Docker — ver `docker volume ls | grep geomagic`

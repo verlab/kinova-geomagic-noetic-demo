@@ -124,7 +124,8 @@ class FeedbackNode(object):
             f = np.clip(f * self.force_scale, -self.max_force, self.max_force)
             self._f_prev = (1.0 - self.filter_alpha) * self._f_prev + self.filter_alpha * f
             msg = ChannelFloat32()
-            msg.name = ["fx", "fy", "fz"]
+            # sensor_msgs/ChannelFloat32: single string name + float[] values (omni_cartesian uses values[0:3])
+            msg.name = "fx_fy_fz"
             msg.values = [float(self._f_prev[0]), float(self._f_prev[1]), float(self._f_prev[2])]
             self._pub.publish(msg)
             self._rate.sleep()
