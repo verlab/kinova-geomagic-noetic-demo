@@ -22,26 +22,25 @@
   <node pkg="tf2_ros" type="static_transform_publisher" name="base_link_to_geomagic_base"
         args="0.5 0 0.25 0 0 0 base_link base"/>
 
-  <!-- Geomagic Touch hardware driver (OpenHaptics HD API) -->
+  <!-- Geomagic Touch hardware driver (OpenHaptics HD API, torque mode for joint feedback) -->
   <node if="$(arg geomagic_driver)" pkg="geomagic_control" type="omni_cartesian" name="geomagic_node" output="screen">
-    <param name="torque_mode" value="false"/>
+    <param name="torque_mode" value="true"/>
     <param name="force_topic" value="/arm/force_feedback"/>
     <param name="omni_name" value="/geomagic"/>
   </node>
 
-  <!-- Unified teleop + force feedback + gripper control -->
+  <!-- Joint-to-joint teleop + torque feedback + gripper -->
   <node pkg="kinova_geomagic_demo" type="geomagic_kinova_teleop.py" name="geomagic_kinova_teleop" output="screen">
     <param name="robot_description_param" value="/my_gen3/robot_description"/>
-    <param name="geomagic_description_param" value="/geomagic/robot_description"/>
-    <!-- Teleop tuning -->
-    <param name="workspace_scale" value="3.0"/>
-    <param name="position_gain" value="1.2"/>
+    <!-- Joint teleop tuning -->
+    <param name="joint_scale" value="3.0"/>
+    <param name="joint_gain" value="1.5"/>
     <param name="max_joint_speed_deg_s" value="25.0"/>
-    <param name="damping_lambda" value="0.05"/>
-    <!-- Force feedback tuning -->
-    <param name="force_scale" value="0.15"/>
-    <param name="force_filter_alpha" value="0.25"/>
-    <param name="max_feedback_force_n" value="2.5"/>
+    <!-- Torque feedback tuning (values in mNm for HD API) -->
+    <param name="torque_scale" value="30.0"/>
+    <param name="torque_filter_alpha" value="0.2"/>
+    <param name="max_torque_mNm" value="400.0"/>
+    <param name="gravity_compensate" value="true"/>
   </node>
 
   <node if="$(arg rviz)" pkg="rviz" type="rviz" name="rviz"
