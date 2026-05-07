@@ -104,15 +104,35 @@ docker compose run --rm demo geomagic-touch-setup
 
 **USB permissions on the host:** copy `docker/udev/70-geomagic-touch.rules` to `/etc/udev/rules.d/` if needed; update VID/PID from `lsusb`.
 
-### Optional: OpenHaptics TeethCavityPick (“cavity”) example
+### Optional: OpenHaptics QuickHaptics GLUT examples (`--profile examples`)
 
-Non-ROS QuickHaptics sample (builds on first run inside the container):
+Non-ROS demos from the **OpenHaptics 3.4-0** SDK (build on first run inside the container). Requires `DISPLAY`.
+
+| Compose service | Notes |
+|-----------------|--------|
+| `teeth-cavity-pick` | Teeth / cavity tutorial |
+| `qh-simple-sphere` | Lightest; good first test if you see **HL/HD errors after `qhStart()`** |
+| `qh-complex-scene` | busier scene |
+| `qh-earth-spin` | |
+| `qh-pick-apples` | |
+| `qh-shape-depth-feedback` | |
+| `qh-skull-coulomb` | |
+| `qh-spongy-cow` | |
 
 ```bash
-docker compose --profile examples run --rm teeth-cavity-pick
+docker compose --profile examples run --rm qh-simple-sphere
+# or: docker compose --profile examples up teeth-cavity-pick
 ```
 
-Requires a working `DISPLAY`.
+Experimental host OpenGL instead of forced Mesa llvm-pipe: **`QH_TRY_GPU_GL=1`** (or legacy **`TEETH_TRY_GPU_GL=1`**), e.g.:
+
+```bash
+QH_TRY_GPU_GL=1 docker compose --profile examples run --rm qh-simple-sphere
+```
+
+**“Communication Error: Check the device connection and configuration”** is the generic **`HD_COMM_ERROR`** string from OpenHaptics when the session breaks—often **during the haptic servo**, not because `DISPLAY` or X11 failed. If **Diagnostic** opens the device but these examples fail after **“Found device model…”**, treat it as USB/driver/stack (see Troubleshooting).
+
+Runner script: **`docker/run-quickhaptics-glut-example.sh`** (Compose sets **`QH_EXAMPLE_REL`** per service).
 
 ---
 
@@ -162,6 +182,7 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 | `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
 | Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
 | `HD_COMM_ERROR` in `omni_cartesian` while **Geomagic Diagnostic / Setup** work in Docker | Rarely Docker itself if the vendor tools succeed in the same stack. **`docker compose build`** after C++ fixes, quit any other Touch app, verify `/arm/force_feedback` has **three** values; scheduler / force feedback threading was hardened in `omni_cartesian`. |
+| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (**“Error during haptic rendering”** / *Communication Error: Check the device connection*) in QuickHaptics examples | Generic vendor text when the servo loop fails after **`qhStart()`** (not necessarily bad X11). Try service **`qh-simple-sphere`** first, then **`QH_TRY_GPU_GL=1`** (or **`TEETH_TRY_GPU_GL=1`**), USB direct port / autosuspend off, newer Touch driver than the 2016 bundle. See **`docker/run-quickhaptics-glut-example.sh`**. |
 
 ### Known issues (tutorials / vendor tools)
 

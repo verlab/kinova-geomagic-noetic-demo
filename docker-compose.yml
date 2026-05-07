@@ -4,6 +4,9 @@
 #
 # DISPLAY: se não exportar no host, o Compose usa :0 (sessão gráfica local típica).
 # SSH com X11: exporte antes, ex.: DISPLAY=localhost:10.0
+#
+# QuickHaptics (perfil `examples`): `docker compose --profile examples up qh-simple-sphere`
+# Forçar GL do host (experimental): `QH_TRY_GPU_GL=1 docker compose --profile examples up qh-simple-sphere`
 
 x-demo-common: &demo-common
   image: kinova-geomagic-noetic:demo
@@ -11,7 +14,7 @@ x-demo-common: &demo-common
   privileged: true
   # GLX/Mesa ↔ X11 (MIT-SHM); sem isto GLUT/OpenGL em Docker costuma não redesenhar (háptica ok, vista parada).
   ipc: host
-  environment:
+  environment: &demo-environment
     DISPLAY: ${DISPLAY:-:0}
     LANG: en_US.UTF-8
     LC_ALL: en_US.UTF-8
@@ -28,6 +31,23 @@ x-demo-common: &demo-common
     - geomagic-touch-config:/usr/share/3DSystems
   stdin_open: true
   tty: true
+
+# Execução QuickHaptics GLUT: usa QH_EXAMPLE_REL definido pelo serviço.
+x-qh-glut-cmd: &qh-glut-cmd
+  - bash
+  - -c
+  - |
+    unset vblank_mode || true
+    export LIBGL_ALWAYS_SOFTWARE=1
+    export GALLIUM_DRIVER=llvmpipe
+    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+    unset __GLX_VENDOR_LIBRARY_NAME __NV_PRIME_RENDER_OFFLOAD 2>/dev/null || true
+    case "${QH_TRY_GPU_GL:-${TEETH_TRY_GPU_GL:-0}}" in
+      1|true|yes|on)
+        unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE 2>/dev/null || true
+        ;;
+    esac
+    exec /usr/local/bin/run-quickhaptics-glut-example.sh
 
 services:
   demo:
@@ -56,21 +76,78 @@ services:
     command: geomagic-touch-diagnostic
     profiles: ["setup", "calibration"]
 
-  # OpenHaptics + GL não podem tropeçar em nouveau do host: força Mesa swrast aqui (vale sem rebuild da imagem).
+  # --- OpenHaptics QuickHaptics GLUT (perfil examples; HD_COMM / HL_DEVICE em qhStart() = runtime USB/driver/GL) ---
   teeth-cavity-pick:
     <<: *demo-common
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
-    command:
-      - bash
-      - -c
-      - |
-        unset vblank_mode || true
-        export LIBGL_ALWAYS_SOFTWARE=1
-        export GALLIUM_DRIVER=llvmpipe
-        export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
-        unset __GLX_VENDOR_LIBRARY_NAME __NV_PRIME_RENDER_OFFLOAD 2>/dev/null || true
-        exec /usr/local/bin/run-teeth-cavity-pick
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: TeethCavityPick/TeethCavityPickGLUT
+    command: *qh-glut-cmd
+
+  qh-simple-sphere:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_simple_sphere
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SimpleSphere/SimpleSphereGLUT
+    command: *qh-glut-cmd
+
+  qh-complex-scene:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_complex_scene
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: ComplexScene/ComplexSceneGLUT
+    command: *qh-glut-cmd
+
+  qh-earth-spin:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_earth_spin
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: EarthSpin/EarthSpinGLUT
+    command: *qh-glut-cmd
+
+  qh-pick-apples:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_pick_apples
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: pickApples/pickApplesGLUT
+    command: *qh-glut-cmd
+
+  qh-shape-depth-feedback:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_shape_depth
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: ShapeDepthFeedback/ShapeDepthFeedbackGLUT
+    command: *qh-glut-cmd
+
+  qh-skull-coulomb:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_skull_coulomb
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SkullCoulombForce/SkullCoulombForceGLUT
+    command: *qh-glut-cmd
+
+  qh-spongy-cow:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_spongy_cow
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SpongyCow/SpongyCowGLUT
+    command: *qh-glut-cmd
 
 volumes:
   geomagic-touch-config:
