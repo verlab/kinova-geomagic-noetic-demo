@@ -15,6 +15,14 @@ x-demo-common: &demo-common
   privileged: true
   # GLX/Mesa ↔ X11 (MIT-SHM); sem isto GLUT/OpenGL em Docker costuma não redesenhar (háptica ok, vista parada).
   ipc: host
+  # Servo háptico 1 kHz precisa de SCHED_FIFO; sem isto libPhantomIOLib42 recebe EPERM → HD_COMM_ERROR.
+  ulimits:
+    rtprio:
+      soft: 99
+      hard: 99
+    memlock:
+      soft: -1
+      hard: -1
   environment: &demo-environment
     DISPLAY: ${DISPLAY:-:0}
     LANG: en_US.UTF-8

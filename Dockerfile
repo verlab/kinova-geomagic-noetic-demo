@@ -38,6 +38,7 @@ RUN apt-get update \
   python3-pykdl \
   libeigen3-dev \
   dbus avahi-daemon avahi-utils libnss-mdns \
+  iproute2 iputils-ping \
   && rm -rf /var/lib/apt/lists/* \
   && locale-gen en_US.UTF-8 \
   && sed -i 's/^hosts:.*/hosts:          files mdns4_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
