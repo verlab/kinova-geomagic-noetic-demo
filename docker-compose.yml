@@ -1,20 +1,62 @@
 # Um único serviço principal: `demo`.
 # Drivers Geomagic + OpenHaptics são instalados na **imagem** durante `docker compose build`
 # (Dockerfile + docker/install_vendor_geomagic.sh), não como segundo container.
+#
+# DISPLAY: se não exportar no host, o Compose usa :0 (sessão gráfica local típica).
+# SSH com X11: exporte antes, ex.: DISPLAY=localhost:10.0
+#
+# QuickHaptics (perfil `examples`): `docker compose --profile examples up qh-simple-sphere`
+# HD API só-consola / sem GL: `docker compose --profile examples run --rm qh-hd-console`
+# Forçar GL do host (experimental): `QH_TRY_GPU_GL=1 docker compose --profile examples up qh-simple-sphere`
 
 x-demo-common: &demo-common
   image: kinova-geomagic-noetic:demo
   network_mode: host
   privileged: true
-  environment:
-    DISPLAY: ${DISPLAY}
+  # GLX/Mesa ↔ X11 (MIT-SHM); sem isto GLUT/OpenGL em Docker costuma não redesenhar (háptica ok, vista parada).
+  ipc: host
+  # Servo háptico 1 kHz precisa de SCHED_FIFO; sem isto libPhantomIOLib42 recebe EPERM → HD_COMM_ERROR.
+  ulimits:
+    rtprio:
+      soft: 99
+      hard: 99
+    memlock:
+      soft: -1
+      hard: -1
+  environment: &demo-environment
+    DISPLAY: ${DISPLAY:-:0}
     LANG: en_US.UTF-8
     LC_ALL: en_US.UTF-8
     LC_NUMERIC: en_US.UTF-8
+    # Phantom/libPhantom: config + pairing live here (NOT under /opt/geomagic_... — see 3D Systems install PDF).
+    GTDD_HOME: /usr/share/3DSystems
+    XDG_RUNTIME_DIR: /tmp/xdg-runtime-root
+    # RViz/Mesa dentro do Docker: evita novo/tentativas DRI que rebentam o processo (-11).
+    LIBGL_ALWAYS_SOFTWARE: "1"
+    GALLIUM_DRIVER: llvmpipe
   volumes:
     - /tmp/.X11-unix:/tmp/.X11-unix
+    # Emparelhamento Geomagic ($GTDD_HOME): bind mount — commit Default Device.config para reutilizar noutras máquinas.
+    - ./docker/geomagic-config:/usr/share/3DSystems
   stdin_open: true
   tty: true
+
+# Execução QuickHaptics GLUT: usa QH_EXAMPLE_REL definido pelo serviço.
+x-qh-glut-cmd: &qh-glut-cmd
+  - bash
+  - -c
+  - |
+    unset vblank_mode || true
+    export LIBGL_ALWAYS_SOFTWARE=1
+    export GALLIUM_DRIVER=llvmpipe
+    export MESA_LOADER_DRIVER_OVERRIDE=llvmpipe
+    unset __GLX_VENDOR_LIBRARY_NAME __NV_PRIME_RENDER_OFFLOAD 2>/dev/null || true
+    case "${QH_TRY_GPU_GL:-${TEETH_TRY_GPU_GL:-0}}" in
+      1|true|yes|on)
+        unset LIBGL_ALWAYS_SOFTWARE GALLIUM_DRIVER MESA_LOADER_DRIVER_OVERRIDE 2>/dev/null || true
+        ;;
+    esac
+    exec /usr/local/bin/run-quickhaptics-glut-example.sh
 
 services:
   demo:
@@ -23,14 +65,106 @@ services:
       context: .
       dockerfile: Dockerfile
     container_name: kinova_geomagic_noetic
-    # Troque para hardware real, ex.: demo_hardware.launch robot_ip:=192.168.1.10
-    command: roslaunch kinova_geomagic_demo demo_rviz.launch
+    # Hardware: Geomagic ↔ Kinova. IP do braço via .env: KINOVA_ROBOT_IP=192.168.1.10 (omissão: 192.168.1.10)
+    # RViz apenas (sem robô/háptico): roslaunch kinova_geomagic_demo demo_rviz.launch
+    command: roslaunch kinova_geomagic_demo demo_hardware.launch robot_ip:=${KINOVA_ROBOT_IP:-192.168.1.10}
 
-  # Opcional: exemplo oficial OpenHaptics QuickHaptics (dente / cavity).
-  # Requer a mesma imagem já construída (`docker compose build`).
-  # Uso: docker compose --profile examples run --rm teeth-cavity-pick
+  # --- Geomagic Touch (perfil setup | calibration): emparelhamento / IP + diagnóstico do fabricante ---
+  # Uso:  docker compose --profile setup run --rm geomagic-setup
+  #       docker compose --profile setup run --rm geomagic-diagnostic
+  geomagic-setup:
+    <<: *demo-common
+    container_name: kinova_geomagic_setup
+    command: geomagic-touch-setup
+    profiles: ["setup", "calibration"]
+
+  # Teste de comunicação / ferramenta de diagnóstico (nome no tarball 2016: Geomagic_Touch_Diagnostic)
+  geomagic-diagnostic:
+    <<: *demo-common
+    container_name: kinova_geomagic_diagnostic
+    command: geomagic-touch-diagnostic
+    profiles: ["setup", "calibration"]
+
+  # HD API apenas (HelloHapticDevice: sem HL/GL — isola erro na ligação USB/servo que não é problema QuickHaptics)
+  qh-hd-console:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_hd_console
+    environment:
+      <<: *demo-environment
+      HD_CONSOLE_EXAMPLE: HelloHapticDevice
+    command: ["/usr/local/bin/run-hd-console-example.sh"]
+
+  # --- OpenHaptics QuickHaptics GLUT (perfil examples; HD_COMM / HL_DEVICE em qhStart() = runtime USB/driver/GL) ---
   teeth-cavity-pick:
     <<: *demo-common
     profiles: ["examples"]
     container_name: kinova_geomagic_teeth_cavity
-    command: run-teeth-cavity-pick
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: TeethCavityPick/TeethCavityPickGLUT
+    command: *qh-glut-cmd
+
+  qh-simple-sphere:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_simple_sphere
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SimpleSphere/SimpleSphereGLUT
+    command: *qh-glut-cmd
+
+  qh-complex-scene:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_complex_scene
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: ComplexScene/ComplexSceneGLUT
+    command: *qh-glut-cmd
+
+  qh-earth-spin:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_earth_spin
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: EarthSpin/EarthSpinGLUT
+    command: *qh-glut-cmd
+
+  qh-pick-apples:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_pick_apples
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: pickApples/pickApplesGLUT
+    command: *qh-glut-cmd
+
+  qh-shape-depth-feedback:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_shape_depth
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: ShapeDepthFeedback/ShapeDepthFeedbackGLUT
+    command: *qh-glut-cmd
+
+  qh-skull-coulomb:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_skull_coulomb
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SkullCoulombForce/SkullCoulombForceGLUT
+    command: *qh-glut-cmd
+
+  qh-spongy-cow:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_spongy_cow
+    environment:
+      <<: *demo-environment
+      QH_EXAMPLE_REL: SpongyCow/SpongyCowGLUT
+    command: *qh-glut-cmd
+

@@ -4,6 +4,7 @@ find_package(catkin REQUIRED)
 catkin_package()
 catkin_install_python(
   PROGRAMS
+  scripts/geomagic_kinova_teleop.py
   scripts/geomagic_kinova_cartesian_teleop.py
   scripts/kdl_haptic_feedback.py
   scripts/fake_geomagic_joints.py

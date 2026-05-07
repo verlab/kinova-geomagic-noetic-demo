@@ -11,6 +11,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <math.h>
+#include <cmath>
 #include <assert.h>
 #include <sstream>
 
@@ -54,6 +55,7 @@ struct OmniState {
   hduVector3Dd lock_pos;
   double units_ratio;
   bool is_torque_mode = true;
+  pthread_mutex_t force_lock;
 };
 
 class PhantomROS {
@@ -111,12 +113,21 @@ public:
     button_pub = n.advertise<std_msgs::Int32MultiArray>(button_topic.str(), 1);
 
     state = s;
+    if (pthread_mutex_init(&state->force_lock, NULL) != 0) {
+      ROS_FATAL("[Geomagic] pthread_mutex_init(force_lock) failed");
+    }
     state->is_torque_mode = is_torque_mode;
     state->buttons[0] = 0;
     state->buttons[1] = 0;
     state->buttons_prev[0] = 0;
     state->buttons_prev[1] = 0;
     hduVector3Dd zeros(0, 0, 0);
+    state->force = zeros;
+    state->jointTorque = zeros;
+    state->position = zeros;
+    for (int i = 0; i < 7; ++i) {
+      state->thetas[i] = 0.f;
+    }
     state->velocity = zeros;
     state->inp_vel1 = zeros;  //3x1 history of velocity
     state->inp_vel2 = zeros;  //3x1 history of velocity
@@ -156,16 +167,19 @@ public:
     ////////////////////like we are getting direct impedance matching from the
     ////////////////////omni anyway
 
-    if (!state->is_torque_mode){
-      state->force[0] = omnifeed.values[0];// - 0.001 * state->velocity[0];
-      state->force[1] = omnifeed.values[1];// - 0.001 * state->velocity[1];
-      state->force[2] = omnifeed.values[2];// - 0.001 * state->velocity[2];
-    } else{
+    if (omnifeed.values.size() < 3)
+      return;
+    pthread_mutex_lock(&state->force_lock);
+    if (!state->is_torque_mode) {
+      state->force[0] = omnifeed.values[0];
+      state->force[1] = omnifeed.values[1];
+      state->force[2] = omnifeed.values[2];
+    } else {
       state->jointTorque[0] = omnifeed.values[0];
       state->jointTorque[1] = omnifeed.values[1];
       state->jointTorque[2] = omnifeed.values[2];
     }
-
+    pthread_mutex_unlock(&state->force_lock);
   }
 
   void publish_omni_state() {
@@ -245,12 +259,9 @@ HDCallbackCode HDCALLBACK omni_state_callback(void *pUserData)
   hdGetDoublev(HD_CURRENT_TRANSFORM, transform);
   hduVector3Dd joints;
   hdGetDoublev(HD_CURRENT_JOINT_ANGLES, joints);
-  // Try to get a error
-  HDErrorInfo error2;
-  if (HD_DEVICE_ERROR(error2 = hdGetError())) {
-    ROS_ERROR("[Geomagic] FAIL - Joint Angles");
-    return -1;
-  }
+  // Do not return early here: return -1 is not a valid HDCallbackCode and skips hdEndFrame(),
+  // which stops the scheduler / freezes /geomagic/joint_states. Real faults are handled after hdEndFrame.
+
   //ROS_INFO("Joints: %.2f, %.2f, %.2f",joints[0],joints[1],joints[2]);
 
   hduVector3Dd gimbal_angles;
@@ -301,33 +312,43 @@ HDCallbackCode HDCALLBACK omni_state_callback(void *pUserData)
 
       /*  hduVecScale(jointTorque, jointAngleOfTwist, kJointTorqueConstant);
     }*/
-hduVector3Dd jointTorque;
+  hduVector3Dd jointTorque(0., 0., 0.);
+  hduVector3Dd feedback(0., 0., 0.);
+  pthread_mutex_lock(&omni_state->force_lock);
+  if (!omni_state->is_torque_mode) {
+    // Swap axes to match stylus frame (historical Omni convention).
+    feedback[0] = omni_state->force[1] / 10.0;
+    feedback[1] = omni_state->force[2] / 10.0;
+    feedback[2] = omni_state->force[0] / 10.0;
+  } else {
     jointTorque[0] = omni_state->jointTorque[0];
     jointTorque[1] = omni_state->jointTorque[1];
     jointTorque[2] = omni_state->jointTorque[2];
-
-// Clamp the base torques to the nominal values. 
-    for (int i=0; i<3; i++)
-    {
-        if (jointTorque[i] > nominalBaseTorque[i])
-            jointTorque[i] = nominalBaseTorque[i];
-        else if (jointTorque[i] < -nominalBaseTorque[i])
-            jointTorque[i] = -nominalBaseTorque[i];
-    }
-
-
-
-  hduVector3Dd feedback;
-  
-  //Notice that we are changing Y <---> Z
-  if (!omni_state->is_torque_mode){
-    feedback[0] = omni_state->force[1]/10;
-    feedback[1] = omni_state->force[2]/10;
-    feedback[2] = omni_state->force[0]/10;
-    hdSetDoublev(HD_CURRENT_FORCE, feedback);
-  } else{
-    hdSetDoublev(HD_CURRENT_JOINT_TORQUE, jointTorque);
   }
+  pthread_mutex_unlock(&omni_state->force_lock);
+
+// Clamp the base torques to the nominal values.
+  for (int i = 0; i < 3; ++i)
+  {
+    if (jointTorque[i] > nominalBaseTorque[i])
+      jointTorque[i] = nominalBaseTorque[i];
+    else if (jointTorque[i] < -nominalBaseTorque[i])
+      jointTorque[i] = -nominalBaseTorque[i];
+  }
+
+  for (int i = 0; i < 3; ++i)
+  {
+    if (!std::isfinite(feedback[i]))
+      feedback[i] = 0.0;
+    if (!std::isfinite(jointTorque[i]))
+      jointTorque[i] = 0.0;
+  }
+
+  //Notice that we are changing Y <---> Z (copied above under lock).
+  if (!omni_state->is_torque_mode)
+    hdSetDoublev(HD_CURRENT_FORCE, feedback);
+  else
+    hdSetDoublev(HD_CURRENT_JOINT_TORQUE, jointTorque);
   //hdSetDoublev(HD_CURRENT_JOINT_TORQUE, feedback); // using torque instead off force
   
   //Get buttons
@@ -414,49 +435,40 @@ void *ros_publish(void *ptr) {
 }
 
 int main(int argc, char** argv) {
-  ////////////////////////////////////////////////////////////////
-  // Init Phantom
-  ////////////////////////////////////////////////////////////////
+  ros::init(argc, argv, "geomagic_node");
+
+  OmniState state;
+  PhantomROS omni_ros;
+  omni_ros.init(&state);
+
   HDErrorInfo error;
-  HHD hHD;
-  hHD = hdInitDevice(HD_DEFAULT_DEVICE);
+  HHD hHD = hdInitDevice(HD_DEFAULT_DEVICE);
   if (HD_DEVICE_ERROR(error = hdGetError())) {
-    //hduPrintError(stderr, &error, "Failed to initialize haptic device");
-    ROS_ERROR("[Geomagic] Failed to initialize haptic device"); //: %s", &error);
+    ROS_ERROR("[Geomagic] Failed to initialize haptic device");
+    pthread_mutex_destroy(&state.force_lock);
     return -1;
   }
 
   ROS_INFO("[Geomagic] Found %s.", hdGetString(HD_DEVICE_MODEL_TYPE));
   hdEnable(HD_FORCE_OUTPUT);
-  hdStartScheduler();
-  if (HD_DEVICE_ERROR(error = hdGetError())) {
-    ROS_ERROR("[Geomagic] Failed to start the scheduler"); //, &error);
-    return -1;
-  }
   HHD_Auto_Calibration();
 
-  ////////////////////////////////////////////////////////////////
-  // Init ROS
-  ////////////////////////////////////////////////////////////////
-  ros::init(argc, argv, "geomagic_node");
-  OmniState state;
-  PhantomROS omni_ros;
+  hdScheduleAsynchronous(omni_state_callback, &state, HD_MAX_SCHEDULER_PRIORITY);
+  hdStartScheduler();
+  if (HD_DEVICE_ERROR(error = hdGetError())) {
+    ROS_ERROR("[Geomagic] Failed to start the scheduler");
+    hdDisableDevice(hHD);
+    pthread_mutex_destroy(&state.force_lock);
+    return -1;
+  }
 
-  omni_ros.init(&state);
-  hdScheduleAsynchronous(omni_state_callback, &state,
-      HD_MAX_SCHEDULER_PRIORITY);
-  
-  
-
-  ////////////////////////////////////////////////////////////////
-  // Loop and publish
-  ////////////////////////////////////////////////////////////////
   pthread_t publish_thread;
-  pthread_create(&publish_thread, NULL, ros_publish, (void*) &omni_ros);
+  pthread_create(&publish_thread, NULL, ros_publish, (void*)&omni_ros);
   pthread_join(publish_thread, NULL);
 
   ROS_INFO("[Geomagic] Ending Session....");
   hdStopScheduler();
+  pthread_mutex_destroy(&state.force_lock);
   hdDisableDevice(hHD);
 
   return 0;

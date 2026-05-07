@@ -99,10 +99,12 @@ class FeedbackNode(object):
 
     def _lstsq_force(self, tau):
         self.jac_solver.JntToJac(self._q, self._jac)
+        # KDL Jacobian: rows 0-2 = linear velocity (J_v), rows 3-5 = angular velocity
+        # tau = J_v^T * f  =>  f = (J_v^T)^+ * tau
         Jt = np.zeros((self.nj, 3))
         for j in range(self.nj):
             for r in range(3):
-                Jt[j, r] = self._jac[r + 3, j]
+                Jt[j, r] = self._jac[r, j]
         f, *_ = np.linalg.lstsq(Jt, tau, rcond=None)
         return f
 
@@ -124,7 +126,8 @@ class FeedbackNode(object):
             f = np.clip(f * self.force_scale, -self.max_force, self.max_force)
             self._f_prev = (1.0 - self.filter_alpha) * self._f_prev + self.filter_alpha * f
             msg = ChannelFloat32()
-            msg.name = ["fx", "fy", "fz"]
+            # sensor_msgs/ChannelFloat32: single string name + float[] values (omni_cartesian uses values[0:3])
+            msg.name = "fx_fy_fz"
             msg.values = [float(self._f_prev[0]), float(self._f_prev[1]), float(self._f_prev[2])]
             self._pub.publish(msg)
             self._rate.sleep()
