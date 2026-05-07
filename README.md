@@ -161,6 +161,7 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 | Noetic packages missing in `rosdep` | Run `rosdep update --include-eol-distros` |
 | `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
 | Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
+| `HD_COMM_ERROR` in `omni_cartesian` while **Geomagic Diagnostic / Setup** work in Docker | Rarely Docker itself if the vendor tools succeed in the same stack. **`docker compose build`** after C++ fixes, quit any other Touch app, verify `/arm/force_feedback` has **three** values; scheduler / force feedback threading was hardened in `omni_cartesian`. |
 
 ### Known issues (tutorials / vendor tools)
 

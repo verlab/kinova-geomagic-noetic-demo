@@ -15,6 +15,22 @@ Docker Compose mounts a named volume **`geomagic-touch-config`** on **`/usr/shar
 
 If the **USB** Touch still misbehaves on **Ubuntu 20.04+**, 3D Systems / VeRLab notes report that **older 2016** USB stacks can misbehave while **newer Touch drivers (2019+)** work better; Ethernet Touch was often more reliable with the 2016-era USB quirks. Consider a newer vendor tarball if problems persist after **`GTDD_HOME`** is correct.
 
+## Is `libHD` “compiled” correctly?
+
+**OpenHaptics is not built from source in this repository.** During `docker compose build`, `docker/install_vendor_geomagic.sh` copies **precompiled** binaries from the 3.4‑0 tarball into `/usr/lib` (symlinks **`libHD.so` → `libHD.so.3.4.0`**, likewise HL/QH where present). **`libHD` loads `libPhantomIOLib42.so`** from the Geomagic Touch driver package at runtime (`ldd /usr/lib/libHD.so` shows that dependency).
+
+That is the intended stack from **3D Systems**: same **`libHD` 3.4** for **`omni_cartesian`** (CMake `find_library`) and for **QuickHaptics** examples such as Teeth Cavity (built with the stock example `Makefile`; see `docker/run-teeth-cavity-pick.sh`). The driver **`/opt/geomagic_touch_device_driver/lib`** tree here ships **Qt/ICU** for vendor GUIs—not a competing `libHD`, so putting it first on `LD_LIBRARY_PATH` does not shadow OpenHaptics.
+
+If **`HD_COMM_ERROR` appears both in ROS and in Teeth Cavity**, that usually points away from ROS wrapping and toward **runtime** behaviour (USB power/hub/kernel vs 2016 driver, device reset, exclusivity—only one OpenHaptics client should own the device at a time, etc.), not toward a mistaken HD compile in Catkin.
+
+**Sanity-check inside the image** (paths may resolve via `/lib` symlinks):
+
+```bash
+ls -la /usr/lib/libHD.so* /usr/lib/libPhantomIOLib42.so
+ldd /usr/lib/libHD.so | head -20
+ldd /catkin_ws/devel/lib/geomagic_control/omni_cartesian | grep -E 'HD\.so|Phantom'
+```
+
 ## Notes vs. older “Geomagic on ROS” / phantom_omni tutorials (e.g. OpenHaptics guide + `phantom_omni`)
 
 | Topic | Typical legacy tutorial | This repo |
