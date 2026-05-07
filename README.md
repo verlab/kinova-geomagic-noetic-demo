@@ -96,22 +96,39 @@ Adjust `robot_ip` to your Gen3 controller. Compose uses `network_mode: host` for
 | `haptic_source:=robot_wrench` | Use measured tool wrench from the driver (default on hardware) |
 | `haptic_source:=kdl_gravity` | Gravity-based KDL mapping (no F/T sensor; illustrative) |
 
-**Device pairing (USB or LAN, especially Ethernet Touch):** same image, one-off command:
+**Device pairing (REQUIRED before any demo):** OpenHaptics HD API reads **`$GTDD_HOME/config/Default Device.config`**. Without it, all demos fail immediately with **`HD_COMM_ERROR`** or **`HD_COMM_CONFIG_ERROR`**. Run Setup once (persisted in Docker named volume):
 
 ```bash
-docker compose run --rm demo geomagic-touch-setup
+docker compose --profile setup run --rm geomagic-setup
 ```
+
+Verify config was created:
+
+```bash
+docker compose run --rm demo ls -la /usr/share/3DSystems/config/
+```
+
+You should see **`Default Device.config`** (and possibly calibration files). If the file is missing, demos **will not work** — re-run Setup.
 
 **USB permissions on the host:** copy `docker/udev/70-geomagic-touch.rules` to `/etc/udev/rules.d/` if needed; update VID/PID from `lsusb`.
 
+**Stale volume from an older build:** if you upgraded the image and the volume was empty, remove and recreate it:
+
+```bash
+docker compose down -v   # removes named volumes — you'll need to re-run Setup
+docker compose build
+docker compose --profile setup run --rm geomagic-setup
+```
+
 ### Optional: OpenHaptics QuickHaptics GLUT examples (`--profile examples`)
 
-Non-ROS demos from the **OpenHaptics 3.4-0** SDK (build on first run inside the container). Requires `DISPLAY`.
+Non-ROS demos from the **OpenHaptics 3.4-0** SDK (they build on first run inside the container). **QuickHaptics GLUT** services need **`DISPLAY`**; **`qh-hd-console`** (**HelloHapticDevice**) uses the HD-only console examples and normally does **not** need OpenGL/X11.
 
 | Compose service | Notes |
 |-----------------|--------|
+| **`qh-hd-console`** | **HD-only** (`HelloHapticDevice`): no HL, no OpenGL — separates QuickHaptics from the raw servo/USB path (**`HD_CONSOLE_EXAMPLE`** picks other console demos). Use **`docker compose … run --rm -it qh-hd-console`** (TTY for prompts). |
 | `teeth-cavity-pick` | Teeth / cavity tutorial |
-| `qh-simple-sphere` | Lightest; good first test if you see **HL/HD errors after `qhStart()`** |
+| `qh-simple-sphere` | Lightest QuickHaptics; **`TeapotTex.obj`** is baked into that example mesh path |
 | `qh-complex-scene` | busier scene |
 | `qh-earth-spin` | |
 | `qh-pick-apples` | |
@@ -121,6 +138,7 @@ Non-ROS demos from the **OpenHaptics 3.4-0** SDK (build on first run inside the 
 
 ```bash
 docker compose --profile examples run --rm qh-simple-sphere
+docker compose --profile examples run --rm -it qh-hd-console
 # or: docker compose --profile examples up teeth-cavity-pick
 ```
 
@@ -130,9 +148,13 @@ Experimental host OpenGL instead of forced Mesa llvm-pipe: **`QH_TRY_GPU_GL=1`**
 QH_TRY_GPU_GL=1 docker compose --profile examples run --rm qh-simple-sphere
 ```
 
-**“Communication Error: Check the device connection and configuration”** is the generic **`HD_COMM_ERROR`** string from OpenHaptics when the session breaks—often **during the haptic servo**, not because `DISPLAY` or X11 failed. If **Diagnostic** opens the device but these examples fail after **“Found device model…”**, treat it as USB/driver/stack (see Troubleshooting).
+**After a clean rebuild, if QuickHaptics still fails immediately after mesh load**, the culprit is unlikely to be our ROS/Makefile stack: **`TeapotTex`/SimpleSphere uses the smallest stock assets** and engages the servo the same way. Next step is **`qh-hd-console`** (HD API console example — no HL/OpenGL layers).
 
-Runner script: **`docker/run-quickhaptics-glut-example.sh`** (Compose sets **`QH_EXAMPLE_REL`** per service).
+**Driver age:** On Ubuntu 20.04, **USB Geomagic Touch** units often behave better with a **Touch driver bundle newer than 2016.1‑1** (see informal packaging notes such as **[jhu-cisst-external/3ds-touch-openhaptics](https://github.com/jhu-cisst-external/3ds-touch-openhaptics)**; Ethernet adapters sometimes behaved better historically). Obtain a fresher tarball from **3D Systems**, update `docker/vendor` + `docker/install_vendor_geomagic.sh` if paths change, and rebuild — this demo repo ships **2016.1‑1** for reproducibility only.
+
+**“Communication Error: Check the device connection and configuration”** is the vendor string for **`HD_COMM_ERROR`** when the servo session drops—not proof of bad X11. If Diagnostic opens but **`qh-simple-sphere`** / **`qh-hd-console`** fail after **Found device**, treat USB/kernel/driver as primary.
+
+Scripts: **`docker/run-quickhaptics-glut-example.sh`** (env `QH_EXAMPLE_REL`), **`docker/run-hd-console-example.sh`** (env `HD_CONSOLE_EXAMPLE`).
 
 ---
 
@@ -181,8 +203,8 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 | Noetic packages missing in `rosdep` | Run `rosdep update --include-eol-distros` |
 | `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
 | Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
-| `HD_COMM_ERROR` in `omni_cartesian` while **Geomagic Diagnostic / Setup** work in Docker | Rarely Docker itself if the vendor tools succeed in the same stack. **`docker compose build`** after C++ fixes, quit any other Touch app, verify `/arm/force_feedback` has **three** values; scheduler / force feedback threading was hardened in `omni_cartesian`. |
-| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (**“Error during haptic rendering”** / *Communication Error: Check the device connection*) in QuickHaptics examples | Generic vendor text when the servo loop fails after **`qhStart()`** (not necessarily bad X11). Try service **`qh-simple-sphere`** first, then **`QH_TRY_GPU_GL=1`** (or **`TEETH_TRY_GPU_GL=1`**), USB direct port / autosuspend off, newer Touch driver than the 2016 bundle. See **`docker/run-quickhaptics-glut-example.sh`**. |
+| `HD_COMM_ERROR` / `HD_COMM_CONFIG_ERROR` in any demo while **Diagnostic / Setup** work | **Most likely: `Default Device.config` is missing.** Run `docker compose --profile setup run --rm geomagic-setup`, then verify `docker compose run --rm demo ls /usr/share/3DSystems/config/`. Stale named volume? `docker compose down -v` and re-setup. |
+| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (TeapotTex path / **`qh-simple-sphere`**) | **Not** a “heavy” GL mesh: **`TeapotTex.obj`** fails the same ⇒ problem is **`qhStart()`** / servo/USB/Phantom, not our Catkin wrappers. **`qh-hd-console`** (**HelloHapticDevice**, HD-only, no HL) isolates HL+GL stack. Same failure ⇒ treat **hardware USB / kernel / stale `libPhantom` (bundled Geomagic Touch **2016.1‑1**)** ([community bundles](https://github.com/jhu-cisst-external/3ds-touch-openhaptics)). Try motherboard **USB 2**, **no hub**, **USB autosuspend off** on host, **`QH_TRY_GPU_GL=1`**, and the same **`HelloHapticDevice`** **outside Docker** on native Ubuntu installs. |
 
 ### Known issues (tutorials / vendor tools)
 

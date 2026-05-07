@@ -66,9 +66,11 @@ ENV XDG_RUNTIME_DIR=/tmp/xdg-runtime-root
 COPY docker/geomagic-touch-setup.sh /usr/local/bin/geomagic-touch-setup
 COPY docker/geomagic-touch-diagnostic.sh /usr/local/bin/geomagic-touch-diagnostic
 COPY docker/run-quickhaptics-glut-example.sh /usr/local/bin/run-quickhaptics-glut-example.sh
+COPY docker/run-hd-console-example.sh /usr/local/bin/run-hd-console-example.sh
 COPY docker/run-teeth-cavity-pick.sh /usr/local/bin/run-teeth-cavity-pick
 RUN chmod +x /usr/local/bin/geomagic-touch-setup /usr/local/bin/geomagic-touch-diagnostic \
-    /usr/local/bin/run-quickhaptics-glut-example.sh /usr/local/bin/run-teeth-cavity-pick
+    /usr/local/bin/run-quickhaptics-glut-example.sh /usr/local/bin/run-hd-console-example.sh \
+    /usr/local/bin/run-teeth-cavity-pick
 
 COPY docker/udev/70-geomagic-touch.rules /etc/udev/rules.d/70-geomagic-touch.rules
 

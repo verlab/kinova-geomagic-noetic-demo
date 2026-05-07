@@ -6,6 +6,7 @@
 # SSH com X11: exporte antes, ex.: DISPLAY=localhost:10.0
 #
 # QuickHaptics (perfil `examples`): `docker compose --profile examples up qh-simple-sphere`
+# HD API só-consola / sem GL: `docker compose --profile examples run --rm qh-hd-console`
 # Forçar GL do host (experimental): `QH_TRY_GPU_GL=1 docker compose --profile examples up qh-simple-sphere`
 
 x-demo-common: &demo-common
@@ -75,6 +76,16 @@ services:
     container_name: kinova_geomagic_diagnostic
     command: geomagic-touch-diagnostic
     profiles: ["setup", "calibration"]
+
+  # HD API apenas (HelloHapticDevice: sem HL/GL — isola erro na ligação USB/servo que não é problema QuickHaptics)
+  qh-hd-console:
+    <<: *demo-common
+    profiles: ["examples"]
+    container_name: kinova_geomagic_qh_hd_console
+    environment:
+      <<: *demo-environment
+      HD_CONSOLE_EXAMPLE: HelloHapticDevice
+    command: ["/usr/local/bin/run-hd-console-example.sh"]
 
   # --- OpenHaptics QuickHaptics GLUT (perfil examples; HD_COMM / HL_DEVICE em qhStart() = runtime USB/driver/GL) ---
   teeth-cavity-pick:
