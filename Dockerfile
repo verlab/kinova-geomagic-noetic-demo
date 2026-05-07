@@ -37,8 +37,10 @@ RUN apt-get update \
   python3-numpy \
   python3-pykdl \
   libeigen3-dev \
+  dbus avahi-daemon avahi-utils libnss-mdns \
   && rm -rf /var/lib/apt/lists/* \
-  && locale-gen en_US.UTF-8
+  && locale-gen en_US.UTF-8 \
+  && sed -i 's/^hosts:.*/hosts:          files mdns4_minimal [NOTFOUND=return] dns/' /etc/nsswitch.conf
 
 # Conan 1.x (required by ros_kortex)
 RUN pip3 install --no-cache-dir "conan>=1.52,<2" \
