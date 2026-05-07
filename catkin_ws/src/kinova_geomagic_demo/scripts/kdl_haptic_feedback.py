@@ -99,10 +99,12 @@ class FeedbackNode(object):
 
     def _lstsq_force(self, tau):
         self.jac_solver.JntToJac(self._q, self._jac)
+        # KDL Jacobian: rows 0-2 = linear velocity (J_v), rows 3-5 = angular velocity
+        # tau = J_v^T * f  =>  f = (J_v^T)^+ * tau
         Jt = np.zeros((self.nj, 3))
         for j in range(self.nj):
             for r in range(3):
-                Jt[j, r] = self._jac[r + 3, j]
+                Jt[j, r] = self._jac[r, j]
         f, *_ = np.linalg.lstsq(Jt, tau, rcond=None)
         return f
 

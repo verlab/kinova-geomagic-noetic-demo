@@ -36,8 +36,8 @@ x-demo-common: &demo-common
     GALLIUM_DRIVER: llvmpipe
   volumes:
     - /tmp/.X11-unix:/tmp/.X11-unix
-    # Emparelhamento Geomagic ($GTDD_HOME): volume nomeado Docker — ver `docker volume ls | grep geomagic`
-    - geomagic-touch-config:/usr/share/3DSystems
+    # Emparelhamento Geomagic ($GTDD_HOME): bind mount — commit Default Device.config para reutilizar noutras máquinas.
+    - ./docker/geomagic-config:/usr/share/3DSystems
   stdin_open: true
   tty: true
 
@@ -168,5 +168,3 @@ services:
       QH_EXAMPLE_REL: SpongyCow/SpongyCowGLUT
     command: *qh-glut-cmd
 
-volumes:
-  geomagic-touch-config:

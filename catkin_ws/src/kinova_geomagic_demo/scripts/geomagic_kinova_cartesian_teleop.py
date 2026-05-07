@@ -45,6 +45,7 @@ class TeleopNode(object):
         self.haptic_chain_root = rospy.get_param("~haptic_chain_root", "base")
         self.haptic_chain_tip = rospy.get_param("~haptic_chain_tip", "stylus")
         self.gain = rospy.get_param("~position_gain", 0.9)
+        self.workspace_scale = rospy.get_param("~workspace_scale", 3.0)
         self.max_deg_s = rospy.get_param("~max_joint_speed_deg_s", 35.0)
         self.damping = rospy.get_param("~damping_lambda", 0.02)
         self.send_zero_when_disabled = rospy.get_param("~send_zero_when_disabled", True)
@@ -96,10 +97,11 @@ class TeleopNode(object):
         for i in range(6):
             for j in range(n):
                 J[i, j] = self._jac[i, j]
+        # KDL Jacobian: rows 0-2 = linear velocity, rows 3-5 = angular velocity
         t = np.zeros(6)
-        t[3] = v_des[0]
-        t[4] = v_des[1]
-        t[5] = v_des[2]
+        t[0] = v_des[0]
+        t[1] = v_des[1]
+        t[2] = v_des[2]
         jjt = J @ J.T + self.damping * np.eye(6)
         qdot = J.T @ np.linalg.solve(jjt, t)
         return qdot
@@ -137,7 +139,7 @@ class TeleopNode(object):
             if self._fk_arm.JntToCart(self._q_arm, T0) < 0:
                 return
             self._ee0 = np.array([T0.p[0], T0.p[1], T0.p[2]])
-        p_des = self._ee0 + (p - self._hap0)
+        p_des = self._ee0 + self.workspace_scale * (p - self._hap0)
         Tc = kdl.Frame()
         if self._fk_arm.JntToCart(self._q_arm, Tc) < 0:
             return
