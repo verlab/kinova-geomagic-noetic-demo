@@ -22,16 +22,60 @@ Maintained by [VeRLab](https://github.com/verlab) (UFMG).
 |-------------|--------|
 | **Docker** & **Docker Compose** v2 | Recommended workflow |
 | **X11** | For RViz and vendor GUIs (`xhost +local:root` on Linux if needed) |
-| **Geomagic vendor archives** | Place both `.tar.gz` files under `docker/vendor/` before building (see [Vendor archives](#vendor-archives)) |
-| **Hardware** (optional) | Gen3 on LAN; Touch via USB or LAN (Touch X) |
+| **Network** | Kinova reachable on LAN; Geomagic Touch on USB or Ethernet (see [Geomagic and Kinova network setup](#geomagic-and-kinova-network-setup)) |
+| **Geomagic vendor archives** | Only if you **build** the image locally—place both `.tar.gz` under `docker/vendor/` (see **[Quick start (build from source)](#quick-start-build-from-source)** § vendor archives). **Skipped** when using [GHCR](#quick-start-ghcr-pre-built-image). |
 
 ---
 
-## Quick start (Docker)
+## Quick start (GHCR—pre-built image)
 
-### 1. Clone
+CI publishes the image to **[GHCR](https://github.com/verlab/kinova-geomagic-noetic-demo/pkgs/container/kinova-geomagic-noetic-demo)** (`ghcr.io/verlab/kinova-geomagic-noetic-demo`). Typical tags: **`latest`** (from `master`), **`vX.Y.Z`** on releases.
 
-Clone this repository **with submodules** (required for `ros_kortex`):
+You still **clone only the repo** (compose, launch files, [`docker-compose.yml`](docker-compose.yml), Geomagic bind-mount folder)—**no submodules needed** if you stay inside Docker:
+
+```bash
+git clone https://github.com/verlab/kinova-geomagic-noetic-demo.git
+cd kinova-geomagic-noetic-demo
+```
+
+If the package is **private**, log in to GHCR:
+
+```bash
+echo <YOUR_GITHUB_TOKEN> | docker login ghcr.io -u <GITHUB_USERNAME> --password-stdin
+```
+
+Pull and tag locally so Compose matches [`docker-compose.yml`](docker-compose.yml) image name **`kinova-geomagic-noetic:demo`**:
+
+```bash
+docker pull ghcr.io/verlab/kinova-geomagic-noetic-demo:latest
+docker tag ghcr.io/verlab/kinova-geomagic-noetic-demo:latest kinova-geomagic-noetic:demo
+```
+
+Configure **`./docker/geomagic-config`** (Geomagic pairing) and robotics network as in [Geomagic and Kinova network setup](#geomagic-and-kinova-network-setup), then:
+
+```bash
+xhost +local:root   # Linux X11, if required
+docker compose up --no-build
+```
+
+Use **`--no-build`** so Compose does not try to rebuild; it uses the tagged image above.
+
+Robot IP defaults to **`192.168.1.10`**. Override with environment or `.env`:
+
+```bash
+export KINOVA_ROBOT_IP=192.168.1.100
+docker compose up --no-build
+```
+
+Optional: pin a **[release](https://github.com/verlab/kinova-geomagic-noetic-demo/releases)** tag instead of `latest`, e.g. `docker pull ghcr.io/verlab/kinova-geomagic-noetic-demo:v0.2.0` then tag as `kinova-geomagic-noetic:demo`.
+
+---
+
+## Quick start (build from source)
+
+### 1. Clone with submodules
+
+Required for **`ros_kortex`** when building locally:
 
 ```bash
 git clone --recurse-submodules https://github.com/verlab/kinova-geomagic-noetic-demo.git
@@ -77,6 +121,50 @@ Stop with `Ctrl+C`.
 
 ---
 
+## Geomagic and Kinova network setup
+
+Compose uses **`network_mode: host`** and **`privileged: true`** so ROS, the Kinova driver, Geomagic LAN (mDNS / link-local), and real-time servo limits behave like on the host.
+
+### Kinova Gen3 (Ethernet)
+
+| Step | What to do |
+|------|-------------|
+| 1 | Connect the Gen3 controller / base to your LAN. Default IP used in this demo is **`192.168.1.10`**; adjust if you changed it in **[Kinova/Kortex Networking](https://github.com/Kinovarobotics/ros_kortex#documentation)** docs. **`ping`** the robot from the workstation before **`docker compose up`**. |
+| 2 | On the PC, set that NIC to a static IP on the **same subnet** as the robot (e.g. `192.168.1.50/24` gateway optional) **or** use DHCP if your controller was reconfigured accordingly. **`ping`** the robot IP before starting Docker. |
+| 3 | Open the controller **web interface** at `http://<controller_ip>` (when enabled) and verify **operational / safety** state allows motion. |
+| 4 | **Firewall**: allow outbound TCP sessions from the PC to the controller (Kinova ROS driver uses fixed ports per Kortex docs). Easiest sanity check on Ubuntu: **`sudo ufw status`**—if blocking, **`sudo ufw allow from YOUR_PC to any`** to the robot IP or briefly disable firewall for troubleshooting. |
+| 5 | In this demo, export **`KINOVA_ROBOT_IP=<controller_ip>`** (or `.env`) so **`demo_hardware.launch`** passes **`robot_ip:=...`** into **`kortex_driver`**. |
+
+### Geomagic Touch (Ethernet / LAN pairing)
+
+Needed when **`Default Device.config`** shows **`CardType=LAN`** and a **`HostName=*.local`** machine name.
+
+| Step | What to do |
+|------|-------------|
+| 1 | Use a **direct cable PC ↔ Touch dongle/brick** if possible (no flaky consumer switch path for link-local discovery). Touch side often gets **`169.254.x.x`** (APIPA/link-local only). |
+| 2 | On the **Ubuntu host**, set **that NIC** to **link-local only**: *Settings → Wired → IPv4 → Link-local only*, or **`nmcli`**: `sudo nmcli connection edit <wired>` → set **`ipv4.method`** to **`link-local`**, reconnect. Your PC interface should appear as **`169.254.y.z/16`** (different host part than Touch). **`ping 169.254....`** to the Touch’s IP after **`Geomagic_Touch_Setup`** shows it—or **`ping hostname.local`**. |
+| 3 | The image runs **Avahi** + **`nss-mdns`** in the **[entrypoint](docker/entrypoint.sh)** so **`.local`** resolves **inside** the container; **`network_mode: host`** attaches to the host stack for multicast DNS. Ensure **nothing** blocks multicast on that NIC. |
+| 4 | **Pairing**: `docker compose --profile setup run --rm geomagic-setup` completes pairing; **`./docker/geomagic-config/config/Default Device.config`** is bind-mounted — copy that directory to another machine if you reuse the **same Touch** pairing. |
+
+### Geomagic Touch (USB)
+
+| Step | What to do |
+|------|-------------|
+| 1 | Prefer **USB 2 motherboard port**, cable **without hub**. |
+| 2 | **`lsusb`** for vendor **256f**. Install **`docker/udev/70-geomagic-touch.rules`** → `/etc/udev/rules.d/`, **`sudo udevadm control --reload-rules && sudo udevadm trigger`**. |
+| 3 | The entrypoint disables **autosuspend** for Geomagic USB where possible—also disable **`usbcore.autosuspend`** on hostile kernels if servo still drops. |
+
+### Verify before `docker compose up`
+
+```bash
+ping -c 2 "${KINOVA_ROBOT_IP:-192.168.1.10}"
+# LAN Touch — example:
+getent hosts epXXXXXXXX.local || ping -c 1 169.254.x.x   # hostname from Geomagic Touch Setup
+docker compose --profile calibration run --rm geomagic-diagnostic    # GUI: optional vendor check
+```
+
+---
+
 ## Execution variants
 
 ### Real Kinova + Geomagic (hardware)
@@ -92,33 +180,32 @@ Adjust `robot_ip` to your Gen3 controller. Compose uses `network_mode: host` for
 
 | Launch argument | Purpose |
 |-----------------|--------|
-| `geomagic_driver:=false` | Omit `omni_cartesian` if joint states are supplied elsewhere |
-| `haptic_source:=robot_wrench` | Use measured tool wrench from the driver (default on hardware) |
-| `haptic_source:=kdl_gravity` | Gravity-based KDL mapping (no F/T sensor; illustrative) |
+| `robot_ip:=<IP>` | Kinova Gen3 controller IP (**default:** `192.168.1.10`) |
+| `geomagic_driver:=false` | Omit `omni_cartesian` if joint states come from simulation or another publisher |
+| `rviz:=false` | Launch without RViz |
 
-**Device pairing (REQUIRED before any demo):** OpenHaptics HD API reads **`$GTDD_HOME/config/Default Device.config`**. Without it, all demos fail immediately with **`HD_COMM_ERROR`** or **`HD_COMM_CONFIG_ERROR`**. Run Setup once (persisted in Docker named volume):
+**Teleop behaviour** (`geomagic_kinova_teleop.py`): Cartesian end-effector mapping; force feedback uses **`tool_external_wrench`** on `/arm/force_feedback` (**`torque_mode:=false`** on `omni_cartesian`). Tuning params are set on this node inside `demo_hardware.launch` (see **`workspace_scale`**, **`force_scale`**, etc.).
+
+**Device pairing (required before demos):** OpenHaptics expects **`./docker/geomagic-config/config/Default Device.config`** (bind-mounted into the container at **`/usr/share/3DSystems`**). Missing file ⇒ **`HD_COMM_ERROR`** / **`HD_COMM_CONFIG_ERROR`**.
+
+Run Setup once (writes into the mounted folder on the host):
 
 ```bash
 docker compose --profile setup run --rm geomagic-setup
 ```
 
-Verify config was created:
+Verify on host:
 
 ```bash
-docker compose run --rm demo ls -la /usr/share/3DSystems/config/
+ls -la docker/geomagic-config/config/
+docker compose run --rm demo ls -la "/usr/share/3DSystems/config/"
 ```
 
-You should see **`Default Device.config`** (and possibly calibration files). If the file is missing, demos **will not work** — re-run Setup.
+You should see **`Default Device.config`** (and possibly calibration files). If missing, re-run Setup ([LAN vs USB networking](#geomagic-and-kinova-network-setup)).
 
-**USB permissions on the host:** copy `docker/udev/70-geomagic-touch.rules` to `/etc/udev/rules.d/` if needed; update VID/PID from `lsusb`.
+**USB permissions on the host:** copy **`docker/udev/70-geomagic-touch.rules`** to **`/etc/udev/rules.d/`** if needed; update VID/PID from **`lsusb`**.
 
-**Stale volume from an older build:** if you upgraded the image and the volume was empty, remove and recreate it:
-
-```bash
-docker compose down -v   # removes named volumes — you'll need to re-run Setup
-docker compose build
-docker compose --profile setup run --rm geomagic-setup
-```
+If **`docker/geomagic-config/config/`** looks wrong or corrupted, recreate only that directory (restore from backup—**avoid committing pairing secrets if the repo is public**), then re-run **`geomagic-setup`**.
 
 ### Optional: OpenHaptics QuickHaptics GLUT examples (`--profile examples`)
 
@@ -191,8 +278,8 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 
 ## Operator notes
 
-- **Geomagic buttons:** dark button enables teleop (relative stylus vs end-effector); light button disables (zero joint speeds).
-- **Haptics:** `omni_cartesian` uses `torque_mode:=false`; `/arm/force_feedback` carries `sensor_msgs/ChannelFloat32` Cartesian force components.
+- **Geomagic buttons:** dark button **hold** = teleop clutch (release to freeze arm); light button **press** = toggle **Robotiq 2F-85** gripper (open ↔ closed).
+- **Haptics:** `omni_cartesian` uses **`torque_mode:=false`**; Cartesian forces arrive on **`/arm/force_feedback`** as **`sensor_msgs/ChannelFloat32`** (`fx_fy_fz`).
 
 ---
 
@@ -203,8 +290,9 @@ Install OpenHaptics and Geomagic vendor files on the host separately if building
 | Noetic packages missing in `rosdep` | Run `rosdep update --include-eol-distros` |
 | `moveit_fake_controller_manager` unavailable | Dockerfile skips via rosdep; install manually if you need full MoveIt demos |
 | Joint states read as zero | Use `LC_ALL=en_US.UTF-8` and `LC_NUMERIC=en_US.UTF-8` (set in image and Compose) |
-| `HD_COMM_ERROR` / `HD_COMM_CONFIG_ERROR` in any demo while **Diagnostic / Setup** work | **Most likely: `Default Device.config` is missing.** Run `docker compose --profile setup run --rm geomagic-setup`, then verify `docker compose run --rm demo ls /usr/share/3DSystems/config/`. Stale named volume? `docker compose down -v` and re-setup. |
-| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (TeapotTex path / **`qh-simple-sphere`**) | **Not** a “heavy” GL mesh: **`TeapotTex.obj`** fails the same ⇒ problem is **`qhStart()`** / servo/USB/Phantom, not our Catkin wrappers. **`qh-hd-console`** (**HelloHapticDevice**, HD-only, no HL) isolates HL+GL stack. Same failure ⇒ treat **hardware USB / kernel / stale `libPhantom` (bundled Geomagic Touch **2016.1‑1**)** ([community bundles](https://github.com/jhu-cisst-external/3ds-touch-openhaptics)). Try motherboard **USB 2**, **no hub**, **USB autosuspend off** on host, **`QH_TRY_GPU_GL=1`**, and the same **`HelloHapticDevice`** **outside Docker** on native Ubuntu installs. |
+| `HD_COMM_ERROR` / `HD_COMM_CONFIG_ERROR` in any demo while **Diagnostic / Setup** work | **Most likely: missing `Default Device.config`.** Run **`docker compose --profile setup run --rm geomagic-setup`**, then verify **`ls docker/geomagic-config/config/`** (host) or **`docker compose run --rm demo ls /usr/share/3DSystems/config/`**. |
+| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (**LAN Touch**) | **`CardType=LAN`** in **`Default Device.config`**: NIC must use **link-local**, **Avahi**/mDNS must resolve **`*.local`**, **`network_mode: host`**. Use [Geomagic and Kinova network setup](#geomagic-and-kinova-network-setup). |
+| `HL_DEVICE_ERROR` / `HD_COMM_ERROR` (TeapotTex / **`qh-simple-sphere`**) | **Not** a “heavy” GL mesh: **`TeapotTex.obj`** fails the same ⇒ servo/USB/Phantom path. **`qh-hd-console`** isolates HL+GL. Same failure ⇒ USB/kernel/driver (**[community bundles](https://github.com/jhu-cisst-external/3ds-touch-openhaptics)**), etc. Try **USB 2**, **no hub**, **`QH_TRY_GPU_GL=1`**. |
 
 ### Known issues (tutorials / vendor tools)
 
