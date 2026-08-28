@@ -8,6 +8,7 @@ catkin_install_python(
   scripts/geomagic_kinova_cartesian_teleop.py
   scripts/kdl_haptic_feedback.py
   scripts/fake_geomagic_joints.py
+  scripts/kinova_wrist_wave.py
   DESTINATION
   ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(DIRECTORY launch rviz DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

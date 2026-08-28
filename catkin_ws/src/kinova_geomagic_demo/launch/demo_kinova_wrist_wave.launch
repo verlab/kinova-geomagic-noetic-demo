@@ -1,0 +1,32 @@
+<?xml version="1.0"?>
+<!--
+  Kinova Gen3: vertical pose (all zeros), then loop wrist pitch 0° ↔ 90° about X.
+  Default robot controller: 192.168.1.10 (override with robot_ip:=...)
+
+  Docker:
+    docker compose run --rm demo \
+      roslaunch kinova_geomagic_demo demo_kinova_wrist_wave.launch robot_ip:=192.168.1.10
+-->
+<launch>
+  <arg name="robot_ip" default="192.168.1.10"/>
+  <arg name="start_driver" default="true"/>
+  <arg name="start_rviz" default="true"/>
+  <arg name="vision" default="false"/>
+  <arg name="wrist_angle_deg" default="90.0"/>
+  <arg name="hold_sec" default="1.0"/>
+  <arg name="cycles" default="0"/>
+
+  <include if="$(arg start_driver)" file="$(find kortex_driver)/launch/kortex_driver.launch">
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+    <arg name="start_moveit" value="false"/>
+    <arg name="ip_address" value="$(arg robot_ip)"/>
+    <arg name="vision" value="$(arg vision)"/>
+  </include>
+
+  <node pkg="kinova_geomagic_demo" type="kinova_wrist_wave.py" name="kinova_wrist_wave" output="screen">
+    <param name="robot_name" value="my_gen3"/>
+    <param name="wrist_angle_deg" value="$(arg wrist_angle_deg)"/>
+    <param name="hold_sec" value="$(arg hold_sec)"/>
+    <param name="cycles" value="$(arg cycles)"/>
+  </node>
+</launch>
