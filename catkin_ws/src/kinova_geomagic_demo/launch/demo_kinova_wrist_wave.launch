@@ -4,8 +4,9 @@
   Default robot controller: 192.168.1.10 (override with robot_ip:=...)
 
   Docker:
-    docker compose run --rm demo \
+    docker compose run demo \
       roslaunch kinova_geomagic_demo demo_kinova_wrist_wave.launch robot_ip:=192.168.1.10
+    Remove the container after exit as needed.
 -->
 <launch>
   <arg name="robot_ip" default="192.168.1.10"/>
