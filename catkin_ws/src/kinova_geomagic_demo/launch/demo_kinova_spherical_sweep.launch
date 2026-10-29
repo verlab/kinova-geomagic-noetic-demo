@@ -1,0 +1,48 @@
+<?xml version="1.0"?>
+<!-- Finite 7-DoF joint sweep. Each waypoint ends at rest, followed by a dwell. -->
+<launch>
+  <arg name="execution_mode" default="rviz"/>
+  <arg name="visual_move_sec" default="2.0"/>
+  <arg name="robot_ip" default="192.168.1.10"/>
+  <arg name="robot_name" default="my_gen3"/>
+  <arg name="start_driver" default="true"/>
+  <arg name="start_rviz" default="true"/>
+  <arg name="vision" default="false"/>
+  <arg name="first_tilt_deg" default="120.0"/>
+  <arg name="hold_sec" default="1.0"/>
+  <arg name="position_tolerance_deg" default="0.1"/>
+  <arg name="velocity_tolerance_deg_s" default="0.5"/>
+
+  <include if="$(eval arg('execution_mode') == 'hardware' and arg('start_driver'))" file="$(find kortex_driver)/launch/kortex_driver.launch">
+    <arg name="arm" value="gen3"/>
+    <arg name="dof" value="7"/>
+    <arg name="robot_name" value="$(arg robot_name)"/>
+    <arg name="start_rviz" value="$(arg start_rviz)"/>
+    <arg name="start_moveit" value="false"/>
+    <arg name="ip_address" value="$(arg robot_ip)"/>
+    <arg name="vision" value="$(arg vision)"/>
+  </include>
+
+  <group if="$(eval arg('execution_mode') == 'rviz')" ns="spherical_sweep_preview">
+    <!-- Isolate both joint states and TF from any running hardware driver. -->
+    <remap from="/tf" to="tf"/>
+    <remap from="/tf_static" to="tf_static"/>
+    <param name="robot_description"
+           command="$(find xacro)/xacro $(find kortex_description)/robots/gen3.xacro dof:=7 vision:=$(arg vision) sim:=true"/>
+    <node pkg="robot_state_publisher" type="robot_state_publisher" name="state_publisher"/>
+    <node if="$(arg start_rviz)" pkg="rviz" type="rviz" name="rviz"
+          args="-d $(find kinova_geomagic_demo)/rviz/spherical_sweep.rviz"/>
+  </group>
+
+  <!-- End roslaunch (including the driver) when the finite sequence exits. -->
+  <node pkg="kinova_geomagic_demo" type="kinova_spherical_sweep.py"
+        name="kinova_spherical_sweep" output="screen" required="true">
+    <param name="execution_mode" value="$(arg execution_mode)"/>
+    <param name="visual_move_sec" value="$(arg visual_move_sec)"/>
+    <param name="robot_name" value="$(arg robot_name)"/>
+    <param name="first_tilt_deg" value="$(arg first_tilt_deg)"/>
+    <param name="hold_sec" value="$(arg hold_sec)"/>
+    <param name="position_tolerance_deg" value="$(arg position_tolerance_deg)"/>
+    <param name="velocity_tolerance_deg_s" value="$(arg velocity_tolerance_deg_s)"/>
+  </node>
+</launch>

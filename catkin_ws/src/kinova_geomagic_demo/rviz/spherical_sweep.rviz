@@ -1,0 +1,42 @@
+Panels:
+  - Class: rviz/Displays
+    Name: Displays
+Visualization Manager:
+  Class: ""
+  Displays:
+    - Class: rviz/Grid
+      Name: Grid
+      Enabled: true
+      Plane Cell Count: 20
+      Cell Size: 0.1
+      Reference Frame: world
+      Value: true
+    - Class: rviz/RobotModel
+      Name: Kinova Gen3 preview
+      Enabled: true
+      Alpha: 1
+      Robot Description: /spherical_sweep_preview/robot_description
+      Collision Enabled: false
+      Visual Enabled: true
+      TF Prefix: ""
+      Value: true
+  Enabled: true
+  Global Options:
+    Background Color: 48; 48; 48
+    Fixed Frame: world
+    Frame Rate: 30
+  Tools:
+    - Class: rviz/Interact
+    - Class: rviz/MoveCamera
+    - Class: rviz/Select
+  Views:
+    Current:
+      Class: rviz/Orbit
+      Distance: 2.5
+      Focal Point: {X: 0.0, Y: 0.0, Z: 0.5}
+      Pitch: 0.4
+      Yaw: 0.8
+  Value: true
+Window Geometry:
+  Height: 720
+  Width: 1280
