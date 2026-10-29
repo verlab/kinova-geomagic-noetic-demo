@@ -119,6 +119,16 @@ Default service command: **`demo_hardware.launch`** — real **Kinova Gen3** + *
 
 Stop with `Ctrl+C`.
 
+### Finite Kinova pose sweep (7 DoF)
+
+`demo_kinova_spherical_sweep.launch` previews a finite J5/J6 sequence in RViz by
+default (`execution_mode:=rviz`). Select `execution_mode:=hardware` to run it on
+the real arm with RViz. Both modes follow the same pose sequence,
+with a full stop and a 1-second dwell at each pose. Hardware execution follows
+the duration-selection policy of `kinova_wrist_wave.py`; the preview uses
+configurable 2-second interpolated movements. See
+[the sequence, joint limits and Docker commands](docs/SPHERICAL_SWEEP.md).
+
 ---
 
 ## Geomagic and Kinova network setup
