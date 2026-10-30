@@ -34,9 +34,10 @@ def build_poses(first_tilt_deg=120.0):
     if not math.isfinite(first_tilt_deg) or not 90.0 < first_tilt_deg <= 120.0:
         raise ValueError("first_tilt_deg must be finite and in (90, 120]")
     poses = [[0.0] * 7]
+    poses.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 270.0])
     for tilt in (first_tilt_deg, 90.0, 60.0, 30.0, 0.0):
         for azimuth in range(0, 360, 45):
-            poses.append([0.0, 0.0, 0.0, 0.0, float(azimuth), tilt, 0.0])
+            poses.append([0.0, 0.0, 0.0, 0.0, float(azimuth), tilt, 270.0])
     poses.append([0.0, 0.0, 0.0, 0.0, 360.0, 0.0, 0.0])
     return poses
 
