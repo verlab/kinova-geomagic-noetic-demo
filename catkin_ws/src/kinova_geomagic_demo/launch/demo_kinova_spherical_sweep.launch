@@ -17,11 +17,17 @@
     <arg name="arm" value="gen3"/>
     <arg name="dof" value="7"/>
     <arg name="robot_name" value="$(arg robot_name)"/>
-    <arg name="start_rviz" value="$(arg start_rviz)"/>
+    <!-- Use our explicit RobotModel configuration below. -->
+    <arg name="start_rviz" value="false"/>
     <arg name="start_moveit" value="false"/>
     <arg name="ip_address" value="$(arg robot_ip)"/>
     <arg name="vision" value="$(arg vision)"/>
   </include>
+
+  <node if="$(eval arg('execution_mode') == 'hardware' and arg('start_rviz'))"
+        ns="$(arg robot_name)" pkg="rviz" type="rviz" name="sweep_rviz"
+        args="-d $(find kinova_geomagic_demo)/rviz/spherical_sweep_hardware.rviz"
+        output="screen"/>
 
   <group if="$(eval arg('execution_mode') == 'rviz')" ns="spherical_sweep_preview">
     <!-- Isolate both joint states and TF from any running hardware driver. -->
