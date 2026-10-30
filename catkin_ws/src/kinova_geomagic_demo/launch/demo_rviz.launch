@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
   <arg name="rviz" default="true"/>
-  <arg name="vision" default="false"/>
+  <arg name="vision" default="true"/>
 
   <!-- Kinova Gen3 description for visualization (Gazebo-style world link when sim:=true) -->
   <param name="robot_description"

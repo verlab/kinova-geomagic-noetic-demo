@@ -7,7 +7,7 @@
   <arg name="robot_name" default="my_gen3"/>
   <arg name="start_driver" default="true"/>
   <arg name="start_rviz" default="true"/>
-  <arg name="vision" default="false"/>
+  <arg name="vision" default="true"/>
   <arg name="first_tilt_deg" default="120.0"/>
   <arg name="hold_sec" default="1.0"/>
   <arg name="position_tolerance_deg" default="0.1"/>
