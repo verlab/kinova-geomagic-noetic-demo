@@ -127,18 +127,20 @@ class SweepTests(unittest.TestCase):
 
     def test_requested_sequence_and_paired_transitions(self):
         poses = sweep.build_poses()
-        self.assertEqual(len(poses), 42)
+        self.assertEqual(len(poses), 43)
         self.assertEqual(poses[0], [0.] * 7)
+        self.assertEqual(poses[1], [0., 0., 0., 0., 0., 0., 270.])
+        self.assertTrue(all(q[6] == 270 for q in poses[1:-1]))
         for ring, tilt in enumerate((120, 90, 60, 30, 0)):
-            group = poses[1 + ring * 8:9 + ring * 8]
+            group = poses[2 + ring * 8:10 + ring * 8]
             self.assertEqual([q[4] for q in group], list(range(0, 360, 45)))
             self.assertTrue(all(q[5] == tilt for q in group))
-        for index in (9, 17, 25, 33):
+        for index in (10, 18, 26, 34):
             self.assertEqual(poses[index-1][4], 315)
             self.assertEqual(poses[index][4], 0)
             self.assertEqual(poses[index][5], poses[index-1][5] - 30)
         self.assertEqual(poses[-1], [0., 0., 0., 0., 360., 0., 0.])
-        self.assertTrue(all(q[i] == 0 for q in poses for i in (0, 1, 2, 3, 6)))
+        self.assertTrue(all(q[i] == 0 for q in poses for i in (0, 1, 2, 3)))
 
     def test_full_run_holds_every_pose_and_ends(self):
         dwells = []
@@ -149,19 +151,24 @@ class SweepTests(unittest.TestCase):
             dwells.append(self.clock.now - before)
         self.node.hold_pose = hold
         self.assertTrue(self.node.run())
-        self.assertEqual(len(dwells), 42)
+        self.assertEqual(len(dwells), 43)
         self.assertTrue(all(t >= 1.0 - 1e-9 for t in dwells))
-        self.assertEqual(len(self.commands), 41)  # Initial all-zero pose already reached.
+        self.assertEqual(len(self.commands), 42)  # Initial all-zero pose already reached.
         for tr in self.commands:
             self.assertEqual(len(tr.waypoints), 1)
             self.assertFalse(tr.use_optimal_blending)
             wp = tr.waypoints[0].oneof_type_of_waypoint.angular_waypoint[0]
             self.assertEqual(wp.duration, 2)
             self.assertEqual(wp.maximum_velocities, [])
-        for index in (8, 16, 24, 32, 40):
+        for index in (9, 17, 25, 33, 41):
             q = self.commands[index].waypoints[0].oneof_type_of_waypoint.angular_waypoint[0].angles
             self.assertEqual(q[4], 360)
-            self.assertEqual(q[5], {8:90, 16:60, 24:30, 32:0, 40:0}[index])
+            self.assertEqual(q[5], {9:90, 17:60, 25:30, 33:0, 41:0}[index])
+        command_angles = [tr.waypoints[0].oneof_type_of_waypoint.angular_waypoint[0].angles
+                          for tr in self.commands]
+        self.assertEqual(command_angles[0], [0., 0., 0., 0., 0., 0., 270.])
+        self.assertTrue(all(q[6] == 270 for q in command_angles[:-1]))
+        self.assertEqual(command_angles[-1][6], 0)
         self.assertEqual(self.positions, [0.] * 7)
         self.node._stop.assert_called_once()
 
@@ -169,7 +176,7 @@ class SweepTests(unittest.TestCase):
         for value in (120.3, 121, 90, 0, float('nan'), float('inf')):
             with self.assertRaises(ValueError):
                 sweep.build_poses(value)
-        self.assertEqual(sweep.build_poses(115)[1][5], 115)
+        self.assertEqual(sweep.build_poses(115)[2][5], 115)
         for key, value in (('/my_gen3/degrees_of_freedom', 6), ('~hold_sec', 0),
                            ('~position_tolerance_deg', .3), ('~hold_sec', float('nan'))):
             rospy.get_param.side_effect = lambda name, default: value if name == key else default
@@ -322,10 +329,14 @@ class PreviewTests(unittest.TestCase):
         self.assertTrue(runner.run())
         self.pub_factory.assert_called_once_with('/spherical_sweep_preview/joint_states',
                                                 runner.message_type, queue_size=1, latch=True)
-        self.assertAlmostEqual(self.now, 124., places=6)
+        self.assertAlmostEqual(self.now, 127., places=6)
         self.assertEqual(self.messages[-1].name, ['joint_%d' % i for i in range(1, 8)])
         self.assertAlmostEqual(self.messages[-1].position[4], 10 * sweep.math.pi)
         self.assertEqual(self.messages[-1].velocity, [0.] * 7)
+        self.assertAlmostEqual(self.messages[-1].position[6], 0.)
+        held = [m.position[6] for m in self.messages if 4. <= m.header.stamp <= 124.]
+        self.assertTrue(held)
+        self.assertTrue(all(abs(q + sweep.math.pi / 2) < 1e-9 for q in held))
         q5 = [m.position[4] for m in self.messages]
         self.assertTrue(all(b >= a - 1e-10 for a, b in zip(q5, q5[1:])))
         self.service.assert_not_called()
