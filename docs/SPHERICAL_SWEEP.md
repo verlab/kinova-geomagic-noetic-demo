@@ -117,9 +117,14 @@ docker compose run --rm \
   execution_mode:=hardware robot_ip:=192.168.1.10
 ```
 
-Acrescente `vision:=true` se o braço tiver o módulo de visão Kinova.
+O módulo de visão Kinova está habilitado por padrão (`vision:=true`), conforme
+a configuração deste braço. Para um braço sem esse módulo, use `vision:=false`.
 Ambos os modos utilizam a configuração gráfica do Docker descrita no README.
 `start_rviz:=false` desativa somente a janela gráfica; não muda o modo de execução.
+No hardware, o launch abre uma configuração própria com `RobotModel` habilitado,
+referencial fixo `base_link` e `robot_description` resolvido no namespace
+`robot_name`. Isso também funciona com `start_driver:=false` quando o driver
+correspondente já está ativo; não depende da configuração salva do RViz.
 
 No modo `hardware`, `start_driver:=false` permite utilizar um driver já ativo;
 `robot_name` deve corresponder ao namespace desse driver. Esse parâmetro não é
