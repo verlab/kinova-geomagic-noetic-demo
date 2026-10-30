@@ -7,20 +7,26 @@ na configuração vertical. Não há aquisição de sensores nesta sequência.
 
 ## Sequência
 
-J1, J2, J3, J4 e J7 ficam em 0° em todos os alvos. A numeração é de 1 a 7;
+J1, J2, J3 e J4 ficam em 0° em todos os alvos. Após o zero inicial, J7 vai
+para 270° em uma pose separada, permanece nesse alvo durante os cinco anéis
+e retorna a 0° no mesmo waypoint que fecha a varredura de J5. A numeração é de 1 a 7;
 J5 e J6 correspondem aos índices 4 e 5 do vetor enviado à API.
 
 | Etapa | J6 | J5, na ordem de execução |
 | --- | --- | --- |
 | Inicial | 0° | 0° (todas as juntas em zero) |
+| Preparação de J7 | 0° | 0°; somente J7 vai para 270° |
 | Anel 1 | 120° | 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° |
 | Anel 2 | 90° | 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° |
 | Anel 3 | 60° | 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° |
 | Anel 4 | 30° | 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° |
 | Anel 5 | 0° | 0°, 45°, 90°, 135°, 180°, 225°, 270°, 315° |
-| Final | 0° | 360° ≡ 0°, encerrando a execução |
+| Final | 0° | 360° ≡ 0°; J7 retorna a 0°, encerrando a execução |
 
-São **42 alvos com parada**. Cada transição entre anéis envia J5 e J6 juntos em
+O alvo de J7 é angular: 270° equivale a −90°; não se exige uma volta positiva
+de 270°. A prévia usa o caminho angular mais curto.
+
+São **43 alvos com parada**. Cada transição entre anéis envia J5 e J6 juntos em
 um único waypoint: de `(J5=315°, J6=θ)` para `(J5=0°, J6=θ−30°)`. Não há parada
 intermediária para mover uma junta de cada vez. A passagem de J5 por zero é
 expressa no comando como o ângulo equivalente mais próximo do feedback (por
@@ -85,7 +91,7 @@ O parâmetro **`execution_mode`** seleciona a execução:
 | `rviz` (padrão) | Anima o modelo no RViz; não instancia clientes nem assinaturas Kortex. |
 | `hardware` | Executa no braço real e abre o RViz para acompanhar o feedback. |
 
-A prévia utiliza a mesma lista de 42 poses, com transições simultâneas de J5/J6,
+A prévia utiliza a mesma lista de 43 poses, com transições simultâneas de J5/J6,
 passagem positiva por 360° e espera de 1 s em cada alvo. Inicia no zero virtual.
 A interpolação articular é cúbica, com velocidade zero nas extremidades, e dura
 **2 s por movimento** (`visual_move_sec`). Esse tempo é apenas de visualização:
