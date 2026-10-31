@@ -150,3 +150,17 @@ python3 -m unittest discover -s tests -p 'test_spherical_sweep.py' -v
 Os testes usam mensagens e serviços simulados em Python para verificar a ordem,
 paradas, transições simultâneas, retorno angular a zero, rejeições, feedback,
 timeouts e interrupção. Não substituem validação no Docker/ROS nem ensaio físico.
+
+## Reutilização por coordenador externo
+
+`start_sweep:=false` inicia somente os componentes de driver/visualização
+selecionados, sem executar a varredura autônoma. O padrão continua `true`.
+O coordenador do repositório pai `mm1-black`, em `docker/scripts/experiment.py`,
+usa essa opção para comandar uma pose por vez e capturar a Trena entre paradas.
+Não execute os dois controladores ao mesmo tempo.
+
+A lista de alvos e a diferença angular estão em `spherical_sweep_sequence.py`,
+sem dependência ROS. `KinovaSphericalSweep.prepare()` inicializa notificações e
+faults; `send_pose()` aguarda a conclusão e `hold_pose()` verifica a acomodação.
+Esses pontos são reutilizados pelo adaptador, preservando a política de movimento
+e o funcionamento independente deste teste preliminar.
