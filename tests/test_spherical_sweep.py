@@ -65,6 +65,7 @@ for name in ('Base_ClearFaults', 'ExecuteAction', 'OnNotificationActionTopic',
              'OnNotificationActionTopicRequest', 'Stop', 'ValidateWaypointList'):
     setattr(srv, name, type(name, (), {}))
 script = Path(__file__).resolve().parents[1] / 'catkin_ws/src/kinova_geomagic_demo/scripts/kinova_spherical_sweep.py'
+sys.path.insert(0, str(script.parent))
 spec = importlib.util.spec_from_file_location('sweep', script)
 sweep = importlib.util.module_from_spec(spec)
 with patch.dict(sys.modules, {'rospy': rospy, 'kortex_driver.msg': msg, 'kortex_driver.srv': srv}):
