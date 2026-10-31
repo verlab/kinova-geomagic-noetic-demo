@@ -12,4 +12,5 @@ catkin_install_python(
   scripts/kinova_spherical_sweep.py
   DESTINATION
   ${CATKIN_PACKAGE_BIN_DESTINATION})
+install(FILES scripts/spherical_sweep_sequence.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 install(DIRECTORY launch rviz DESTINATION ${CATKIN_PACKAGE_SHARE_DESTINATION})

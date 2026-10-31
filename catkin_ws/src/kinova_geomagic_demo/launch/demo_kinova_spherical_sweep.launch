@@ -1,6 +1,7 @@
 <?xml version="1.0"?>
 <!-- Finite 7-DoF joint sweep. Each waypoint ends at rest, followed by a dwell. -->
 <launch>
+  <arg name="start_sweep" default="true"/>
   <arg name="execution_mode" default="rviz"/>
   <arg name="visual_move_sec" default="2.0"/>
   <arg name="robot_ip" default="192.168.1.10"/>
@@ -41,7 +42,7 @@
   </group>
 
   <!-- End roslaunch (including the driver) when the finite sequence exits. -->
-  <node pkg="kinova_geomagic_demo" type="kinova_spherical_sweep.py"
+  <node if="$(arg start_sweep)" pkg="kinova_geomagic_demo" type="kinova_spherical_sweep.py"
         name="kinova_spherical_sweep" output="screen" required="true">
     <param name="execution_mode" value="$(arg execution_mode)"/>
     <param name="visual_move_sec" value="$(arg visual_move_sec)"/>

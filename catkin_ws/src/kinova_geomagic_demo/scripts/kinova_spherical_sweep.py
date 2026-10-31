@@ -7,6 +7,7 @@ same angular-waypoint duration selection as kinova_wrist_wave.py.
 See docs/SPHERICAL_SWEEP.md for the sequence, limits and Docker commands.
 """
 import math
+from pathlib import Path
 import sys
 import threading
 import time
@@ -23,23 +24,8 @@ from kortex_driver.srv import (
 )
 
 
-def angular_delta(target, current):
-    """Signed shortest angular distance in degrees, including 315 -> 0 = +45."""
-    return (target - current + 180.0) % 360.0 - 180.0
-
-
-def build_poses(first_tilt_deg=120.0):
-    # 120 is below the manufacturer's SOFTWARE limit of 120.3 (guide r12, p109).
-    # A smaller first ring can be selected explicitly; the other rings stay fixed.
-    if not math.isfinite(first_tilt_deg) or not 90.0 < first_tilt_deg <= 120.0:
-        raise ValueError("first_tilt_deg must be finite and in (90, 120]")
-    poses = [[0.0] * 7]
-    poses.append([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 270.0])
-    for tilt in (first_tilt_deg, 90.0, 60.0, 30.0, 0.0):
-        for azimuth in range(0, 360, 45):
-            poses.append([0.0, 0.0, 0.0, 0.0, float(azimuth), tilt, 270.0])
-    poses.append([0.0, 0.0, 0.0, 0.0, 360.0, 0.0, 0.0])
-    return poses
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from spherical_sweep_sequence import angular_delta, build_poses
 
 
 class KinovaSphericalSweep:
@@ -236,13 +222,17 @@ class KinovaSphericalSweep:
             time.sleep(0.01)
         raise RuntimeError("Pose did not remain stationary for the required dwell")
 
+    def prepare(self):
+        """Initialize notifications and faults without starting the sequence."""
+        self.wait_for_initial_feedback()
+        self._activate(OnNotificationActionTopicRequest())
+        rospy.sleep(1.0)  # Same notification setup delay as wrist_wave.
+        self._clear_faults()
+        rospy.sleep(2.0)
+
     def run(self):
         try:
-            self.wait_for_initial_feedback()
-            self._activate(OnNotificationActionTopicRequest())
-            rospy.sleep(1.0)  # Same notification setup delay as wrist_wave.
-            self._clear_faults()
-            rospy.sleep(2.0)
+            self.prepare()
             for index, target in enumerate(self.poses):
                 if rospy.is_shutdown():
                     return False
